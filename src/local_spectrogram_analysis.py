@@ -12,37 +12,96 @@ import torchaudio
 # Settings
 # --------------------------------------------------
 DATA_ROOT = "data"
+OUTPUT_DIR = "results/figures/local_case_studies"
 
-OUTPUT_DIR = "results/figures/case_studies"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(
+    OUTPUT_DIR,
+    exist_ok=True
+)
 
-CASES: list[dict[str, str | int]] = [
+N_FFT = 512
+WIN_LENGTH = 400
+HOP_LENGTH = 160
+
+
+# --------------------------------------------------
+# Cases
+#
+# start_time / end_time are initial estimates.
+# We can adjust them after seeing the plots.
+# --------------------------------------------------
+CASES: list[dict[str, str | int | float]] = [
     {
         "dataset": "test-other",
         "dataset_index": 78,
         "codec": "mp3",
         "bitrate": "16k",
-        "label": "test-other_mp3_16k_case1",
+        "start_time": 2.05,
+        "end_time": 2.75,
+        "word": "DEAR",
+        "label": "case1_dear_mp3_16k",
     },
     {
         "dataset": "test-other",
         "dataset_index": 124,
         "codec": "opus",
         "bitrate": "8k",
-        "label": "test-other_opus_8k_case2",
-    },
-    {
-        "dataset": "test-clean",
-        "dataset_index": 386,
-        "codec": "mp3",
-        "bitrate": "16k",
-        "label": "test-clean_mp3_16k_case3",
+        "start_time": 2.00,
+        "end_time": 2.90,
+        "word": "GRATEFUL",
+        "label": "case2_grateful_opus_8k",
     },
 ]
 
-N_FFT = 512
-WIN_LENGTH = 400
-HOP_LENGTH = 160
+
+# --------------------------------------------------
+# Convert to mono
+# --------------------------------------------------
+def to_mono(
+    waveform: torch.Tensor
+) -> torch.Tensor:
+
+    if waveform.shape[0] > 1:
+        waveform = waveform.mean(
+            dim=0,
+            keepdim=True
+        )
+
+    return waveform
+
+
+# --------------------------------------------------
+# Crop waveform by time
+# --------------------------------------------------
+def crop_waveform(
+    waveform: torch.Tensor,
+    sample_rate: int,
+    start_time: float,
+    end_time: float,
+) -> torch.Tensor:
+
+    start_sample = int(
+        start_time * sample_rate
+    )
+
+    end_sample = int(
+        end_time * sample_rate
+    )
+
+    start_sample = max(
+        0,
+        start_sample
+    )
+
+    end_sample = min(
+        int(waveform.shape[1]),
+        end_sample
+    )
+
+    return waveform[
+        :,
+        start_sample:end_sample
+    ]
 
 
 # --------------------------------------------------
@@ -133,22 +192,6 @@ def compress_audio(
 
 
 # --------------------------------------------------
-# Convert to mono
-# --------------------------------------------------
-def to_mono(
-    waveform: torch.Tensor
-) -> torch.Tensor:
-
-    if waveform.shape[0] > 1:
-        waveform = waveform.mean(
-            dim=0,
-            keepdim=True
-        )
-
-    return waveform
-
-
-# --------------------------------------------------
 # Spectrogram in dB
 # --------------------------------------------------
 def make_spectrogram(
@@ -184,216 +227,51 @@ def make_spectrogram(
 
 
 # --------------------------------------------------
-# Common plot extent
+# Match spectrogram length
 # --------------------------------------------------
-def get_extent(
-    spectrogram: torch.Tensor,
-    sample_rate: int,
-) -> tuple[float, float, float, float]:
-
-    num_frames = int(
-        spectrogram.shape[1]
-    )
-
-    duration = (
-        num_frames
-        * HOP_LENGTH
-        / float(sample_rate)
-    )
-
-    max_frequency = (
-        float(sample_rate) / 2.0
-    )
-
-    extent: tuple[
-        float,
-        float,
-        float,
-        float
-    ] = (
-        0.0,
-        float(duration),
-        0.0,
-        float(max_frequency),
-    )
-
-    return extent
-
-
-# --------------------------------------------------
-# Plot one spectrogram
-# --------------------------------------------------
-def plot_single_spectrogram(
-    spectrogram: torch.Tensor,
-    sample_rate: int,
-    title: str,
-    output_path: str,
-    vmin: float,
-    vmax: float,
-) -> None:
-
-    spec = spectrogram.detach().cpu().numpy()
-
-    extent = get_extent(
-        spectrogram,
-        sample_rate
-    )
-
-    plt.figure(
-        figsize=(10, 4)
-    )
-
-    image = plt.imshow(
-        spec,
-        origin="lower",
-        aspect="auto",
-        extent=extent,
-        vmin=vmin,
-        vmax=vmax,
-    )
-
-    plt.xlabel(
-        "Time (s)"
-    )
-
-    plt.ylabel(
-        "Frequency (Hz)"
-    )
-
-    plt.title(
-        title
-    )
-
-    plt.colorbar(
-        image,
-        label="Power (dB)"
-    )
-
-    plt.tight_layout()
-
-    plt.savefig(
-        output_path,
-        dpi=300
-    )
-
-    plt.close()
-
-
-# --------------------------------------------------
-# Difference spectrogram
-# compressed - original
-# --------------------------------------------------
-def make_difference(
+def trim_spectrograms(
     original_spec: torch.Tensor,
     compressed_spec: torch.Tensor,
-) -> torch.Tensor:
+) -> tuple[torch.Tensor, torch.Tensor]:
 
     min_frames = min(
         int(original_spec.shape[1]),
         int(compressed_spec.shape[1])
     )
 
-    original_trimmed = original_spec[
-        :, :min_frames
-    ]
-
-    compressed_trimmed = compressed_spec[
-        :, :min_frames
-    ]
-
     return (
-        compressed_trimmed
-        - original_trimmed
+        original_spec[:, :min_frames],
+        compressed_spec[:, :min_frames],
     )
 
 
 # --------------------------------------------------
-# Plot difference spectrogram
+# Plot local comparison
 # --------------------------------------------------
-def plot_difference(
-    difference: torch.Tensor,
-    sample_rate: int,
-    title: str,
-    output_path: str,
-) -> None:
-
-    diff_np = (
-        difference
-        .detach()
-        .cpu()
-        .numpy()
-    )
-
-    extent = get_extent(
-        difference,
-        sample_rate
-    )
-
-    max_abs = float(
-        np.max(
-            np.abs(
-                diff_np
-            )
-        )
-    )
-
-    if max_abs == 0.0:
-        max_abs = 1.0
-
-    plt.figure(
-        figsize=(10, 4)
-    )
-
-    image = plt.imshow(
-        diff_np,
-        origin="lower",
-        aspect="auto",
-        extent=extent,
-        vmin=-max_abs,
-        vmax=max_abs,
-        cmap="coolwarm",
-    )
-
-    plt.xlabel(
-        "Time (s)"
-    )
-
-    plt.ylabel(
-        "Frequency (Hz)"
-    )
-
-    plt.title(
-        title
-    )
-
-    plt.colorbar(
-        image,
-        label="Compressed - WAV (dB)"
-    )
-
-    plt.tight_layout()
-
-    plt.savefig(
-        output_path,
-        dpi=300
-    )
-
-    plt.close()
-
-
-# --------------------------------------------------
-# Combined comparison figure
-# --------------------------------------------------
-def plot_comparison(
+def plot_local_comparison(
     original_spec: torch.Tensor,
     compressed_spec: torch.Tensor,
-    difference: torch.Tensor,
     sample_rate: int,
     codec: str,
     bitrate: str,
-    label: str,
+    word: str,
+    start_time: float,
+    end_time: float,
     output_path: str,
 ) -> None:
+
+    (
+        original_spec,
+        compressed_spec
+    ) = trim_spectrograms(
+        original_spec,
+        compressed_spec
+    )
+
+    difference = (
+        compressed_spec
+        - original_spec
+    )
 
     original_np = (
         original_spec
@@ -415,24 +293,6 @@ def plot_comparison(
         .cpu()
         .numpy()
     )
-
-    common_frames = min(
-        original_np.shape[1],
-        compressed_np.shape[1],
-        difference_np.shape[1]
-    )
-
-    original_np = original_np[
-        :, :common_frames
-    ]
-
-    compressed_np = compressed_np[
-        :, :common_frames
-    ]
-
-    difference_np = difference_np[
-        :, :common_frames
-    ]
 
     shared_min = float(
         min(
@@ -460,7 +320,7 @@ def plot_comparison(
         diff_abs = 1.0
 
     duration = (
-        common_frames
+        original_np.shape[1]
         * HOP_LENGTH
         / float(sample_rate)
     )
@@ -480,7 +340,7 @@ def plot_comparison(
     fig, axes = plt.subplots(
         3,
         1,
-        figsize=(11, 11),
+        figsize=(10, 10),
         sharex=True
     )
 
@@ -494,7 +354,7 @@ def plot_comparison(
     )
 
     axes[0].set_title(
-        "Original WAV"
+        f'Original WAV — target word "{word}"'
     )
 
     axes[0].set_ylabel(
@@ -545,7 +405,7 @@ def plot_comparison(
     )
 
     axes[2].set_xlabel(
-        "Time (s)"
+        "Local Time (s)"
     )
 
     axes[2].set_ylabel(
@@ -559,7 +419,10 @@ def plot_comparison(
     )
 
     fig.suptitle(
-        label,
+        (
+            f'Local Spectrogram Analysis: "{word}" '
+            f"({start_time:.2f}s–{end_time:.2f}s)"
+        ),
         fontsize=14
     )
 
@@ -596,6 +459,18 @@ def main() -> None:
             case["bitrate"]
         )
 
+        start_time = float(
+            case["start_time"]
+        )
+
+        end_time = float(
+            case["end_time"]
+        )
+
+        word = str(
+            case["word"]
+        )
+
         label = str(
             case["label"]
         )
@@ -604,8 +479,8 @@ def main() -> None:
             f"\nProcessing "
             f"{dataset_name} "
             f"index={dataset_index} "
-            f"{codec.upper()} "
-            f"{bitrate}"
+            f"{codec.upper()} {bitrate} "
+            f'word="{word}"'
         )
 
         dataset = (
@@ -650,89 +525,45 @@ def main() -> None:
                 )
             )
 
-            compressed_sr = sample_rate
+        # Crop AFTER compression so both correspond
+        # to the same absolute time interval.
+        original_local = crop_waveform(
+            waveform,
+            sample_rate,
+            start_time,
+            end_time
+        )
+
+        compressed_local = crop_waveform(
+            compressed_waveform,
+            sample_rate,
+            start_time,
+            end_time
+        )
 
         original_spec = make_spectrogram(
-            waveform
+            original_local
         )
 
         compressed_spec = make_spectrogram(
-            compressed_waveform
+            compressed_local
         )
 
-        difference = make_difference(
-            original_spec,
-            compressed_spec
-        )
-
-        shared_min = float(
-            min(
-                original_spec.min().item(),
-                compressed_spec.min().item()
-            )
-        )
-
-        shared_max = float(
-            max(
-                original_spec.max().item(),
-                compressed_spec.max().item()
-            )
-        )
-
-        wav_path = os.path.join(
+        output_path = os.path.join(
             OUTPUT_DIR,
-            f"{label}_wav.png"
+            f"{label}_local_comparison.png"
         )
 
-        compressed_path = os.path.join(
-            OUTPUT_DIR,
-            f"{label}_{codec}_{bitrate}.png"
-        )
-
-        difference_path = os.path.join(
-            OUTPUT_DIR,
-            f"{label}_difference.png"
-        )
-
-        comparison_path = os.path.join(
-            OUTPUT_DIR,
-            f"{label}_comparison.png"
-        )
-
-        plot_single_spectrogram(
-            original_spec,
-            sample_rate,
-            f"{label} - WAV",
-            wav_path,
-            shared_min,
-            shared_max
-        )
-
-        plot_single_spectrogram(
-            compressed_spec,
-            sample_rate,
-            f"{label} - {codec.upper()} {bitrate}",
-            compressed_path,
-            shared_min,
-            shared_max
-        )
-
-        plot_difference(
-            difference,
-            sample_rate,
-            f"{label} - Difference",
-            difference_path
-        )
-
-        plot_comparison(
+        plot_local_comparison(
             original_spec,
             compressed_spec,
-            difference,
             sample_rate,
             codec,
             bitrate,
-            label,
-            comparison_path
+            word,
+            start_time,
+            end_time,
+            output_path
         )
 
         print(
@@ -742,26 +573,11 @@ def main() -> None:
 
         print(
             "Saved:",
-            wav_path
-        )
-
-        print(
-            "Saved:",
-            compressed_path
-        )
-
-        print(
-            "Saved:",
-            difference_path
-        )
-
-        print(
-            "Saved:",
-            comparison_path
+            output_path
         )
 
     print(
-        "\nSpectrogram comparison analysis complete."
+        "\nLocal spectrogram analysis complete."
     )
 
 
