@@ -637,9 +637,25 @@ The selected local windows were manually estimated around representative errors,
 
 ---
 
+## 18. Stage Twelve — Compare Codecs and Speech Difficulty Directly
+
+After the main WER, bootstrap, error-type and spectrogram analyses were complete, one remaining issue was that two important comparisons were present in the data but were not yet summarised directly.
+
+The first was the comparison between MP3 and Opus at the same nominal bitrate.
+
+Both codecs were tested at:
+
+```text
+64 kbps
+32 kbps
+16 kbps
+```
+
+---
+
 # How AI Was Used
 
-## 18. AI as an Iterative Development Assistant
+## 19. AI as an Iterative Development Assistant
 
 AI was used extensively during this project, but the project did not appear as one complete generated solution.
 
@@ -683,7 +699,7 @@ AI assistance included:
 
 ---
 
-## 19. My Role in the AI-Assisted Workflow
+## 20. My Role in the AI-Assisted Workflow
 
 My role was not limited to accepting generated code.
 
@@ -715,7 +731,7 @@ and:
 
 ---
 
-## 20. Development Timeline in One View
+## 21. Development Timeline in One View
 
 The project can be summarised as:
 
@@ -760,6 +776,10 @@ Add sentence-level spectrogram analysis
     ↓
 Add local spectrogram case studies
     ↓
+Compare MP3 vs Opus at matched bitrates
+    ↓
+Quantify test-other vs test-clean degradation gap
+    ↓
 Organise README, results, GitHub Pages and code documentation
 ```
 
@@ -801,7 +821,7 @@ The project therefore grew logically rather than by simply adding unrelated feat
 
 # Current Interpretation
 
-## 21. Main Pattern Observed So Far
+## 22. Main Pattern Observed So Far
 
 The current results support three main conclusions.
 
@@ -823,9 +843,19 @@ The current analysis also suggests that:
 - Opus can maintain strong ASR performance at relatively high compression ratios;
 - but extremely aggressive Opus compression still causes major degradation.
 
+### 4. Codec choice matters at low bitrate
+
+The matched-bitrate results suggest that MP3 and Opus do not produce the same ASR degradation at equivalent nominal bitrates.
+
+The difference is especially clear under difficult speech conditions. For example, at 16 kbps on `test-other`, MP3 produces substantially greater ΔWER than Opus.
+
+This does not establish that Opus is universally superior for ASR, because the experiment uses one ASR model, one corpus and a specific set of codec configurations.
+
+Instead, the result is treated as evidence that codec design is an important part of the compression-robustness relationship.
+
 ---
 
-## 22. Why the Current Scope Is Considered Sufficient
+## 23. Why the Current Scope Is Considered Sufficient
 
 Possible future extensions include:
 
@@ -870,7 +900,7 @@ The remaining work is mainly to:
 
 # Discussion Points for the Professor
 
-## 23. Questions I Would Like Feedback On
+## 24. Questions I Would Like Feedback On
 
 1. **Is MP3 + Opus a sufficient codec scope for the final project?**
 
@@ -888,6 +918,6 @@ The remaining work is mainly to:
 
 # Short Explanation for Discussion
 
-## 24. One-Minute Project Summary
+## 25. One-Minute Project Summary
 
 > I wanted to investigate whether lossy compression removes information that matters to an ASR model even when the speech may still remain understandable to a human listener. With AI assistance, I first narrowed the project so that codec and bitrate were the main variables while the ASR model remained fixed. I then built the project in stages rather than attempting everything at once. I first verified a WAV-to-Wav2Vec2 baseline, then tested one MP3 condition, then generalised the code to MP3 and Opus across several bitrates. I used a fixed set of 500 LibriSpeech utterances for reproducibility and first tested `test-clean`. After seeing that moderate compression produced only small changes, I added `test-other` to test whether already difficult speech was more vulnerable. I then added paired bootstrap confidence intervals to distinguish stable degradation from small fluctuations, followed by substitution/deletion/insertion analysis to understand how recognition failed. Finally, I added spectrogram case studies to connect the ASR results back to signal-level changes. The current pattern is that moderate compression is relatively robust, while very low bitrates cause clear degradation, especially for the more difficult `test-other` speech.

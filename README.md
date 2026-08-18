@@ -298,20 +298,28 @@ elec5305-project-540077463/
 │   ├── bootstrap_analysis.py
 │   ├── error_analysis.py
 │   ├── spectrogram_analysis.py
-│   └── local_spectrogram_analysis.py
+│   ├── local_spectrogram_analysis.py
+│   └── comparison_analysis.py
 ├── results/
+│   ├── baseline_results.csv
+│   ├── mp3_32k_results.csv
+│   ├── test-clean_experiment_details.csv
+│   ├── test-other_experiment_details.csv
 │   ├── test-clean_summary_results.csv
 │   ├── test-other_summary_results.csv
 │   ├── bootstrap_results.csv
 │   ├── error_analysis/
+│   ├── comparison_analysis/
 │   └── figures/
 ├── requirements.txt
 ├── README.md
+├── CODE_GUIDE.md
 ├── index.md
+├── PROJECT_RATIONALE.md
 └── ELEC5305 Project Proposal v1.pdf
 ```
 
-Large intermediate per-utterance result files and downloaded datasets are intentionally excluded from Git using `.gitignore`.
+The repository includes the experiment code, summary results, per-utterance outputs, error-analysis results, comparison-analysis outputs, and generated figures used in the current analysis. Downloaded LibriSpeech data, temporary compressed audio, virtual environments, and cache files are excluded from version control.
 
 ---
 
@@ -322,7 +330,8 @@ Large intermediate per-utterance result files and downloaded datasets are intent
 - The same Wav2Vec2 model is used for every condition.
 - FFmpeg is used for both MP3 and Opus encoding.
 - Bootstrap comparisons are paired by LibriSpeech dataset index.
-- The current GitHub repository stores summary results and analysis figures, while large intermediate files remain local.
+- Summary and per-utterance experimental results used in the current analysis are included in the repository.
+- Downloaded LibriSpeech data and temporary codec files are not stored in Git.
 
 For an exact snapshot of the current Python environment, an optional lock file can be generated with:
 
@@ -334,9 +343,10 @@ pip freeze > requirements-lock.txt
 
 ## Next Steps
 
-- refine final visualisations
-- compare codec efficiency more systematically
-- document experimental limitations
-- prepare the final report
-- prepare the project demonstration
+- review the matched-bitrate codec comparison and speech-difficulty comparison;
+- collect and organise literature relevant to ASR robustness and lossy compression;
+- incorporate project feedback;
+- determine whether any additional robustness experiment is necessary;
+- prepare the final research report;
+- prepare the project demonstration video.
 
