@@ -2,7 +2,7 @@ import csv
 import os
 import subprocess
 import tempfile
-
+import random
 import torch
 import torchaudio
 from jiwer import wer
@@ -11,7 +11,8 @@ from jiwer import wer
 # --------------------------------------------------
 # Settings
 # --------------------------------------------------
-NUM_SAMPLES = 10
+NUM_SAMPLES = 100
+RANDOM_SEED = 5305
 DATA_ROOT = "data"
 
 DETAIL_RESULT_PATH = "results/all_experiment_details.csv"
@@ -207,7 +208,14 @@ dataset = torchaudio.datasets.LIBRISPEECH(
 
 print("Dataset loaded.")
 print("Total samples:", len(dataset))
+random.seed(RANDOM_SEED)
 
+sample_indices = random.sample(
+    range(len(dataset)),
+    k=min(NUM_SAMPLES, len(dataset))
+)
+
+print("Selected samples:", len(sample_indices))
 
 # --------------------------------------------------
 # Run experiments
@@ -231,7 +239,7 @@ for condition in CONDITIONS:
 
     compression_ratios = []
 
-    for index in range(min(NUM_SAMPLES, len(dataset))):
+    for sample_number, index in enumerate(sample_indices, start=1):
 
         (
             waveform,
@@ -272,7 +280,8 @@ for condition in CONDITIONS:
         detail_results.append({
             "codec": codec,
             "bitrate": bitrate,
-            "sample": index + 1,
+            "sample": sample_number,
+            "dataset_index": index,
             "speaker_id": speaker_id,
             "chapter_id": chapter_id,
             "utterance_id": utterance_id,
@@ -287,7 +296,7 @@ for condition in CONDITIONS:
         print(
             f"{codec.upper():5s} "
             f"{bitrate:12s} "
-            f"Sample {index + 1:2d} | "
+            f"Sample {sample_number:3d} | "
             f"WER={sample_wer:.4f} | "
             f"Compression={compression_ratio:.2f}x"
         )
@@ -333,6 +342,7 @@ with open(
             "codec",
             "bitrate",
             "sample",
+            "dataset_index",
             "speaker_id",
             "chapter_id",
             "utterance_id",
