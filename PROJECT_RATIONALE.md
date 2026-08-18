@@ -650,6 +650,15 @@ Both codecs were tested at:
 32 kbps
 16 kbps
 ```
+This makes it possible to compare codec behaviour without using different nominal bitrate settings.
+
+The second comparison was between the compression-induced degradation on `test-clean` and `test-other`.
+
+This motivated:
+
+```text
+src/comparison_analysis.py
+```
 
 ---
 

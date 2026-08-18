@@ -284,6 +284,12 @@ python src/local_spectrogram_analysis.py
 
 Generates local spectrogram comparisons around selected substitution-error regions.
 
+### 9. Codec and dataset comparison analysis
+
+```bash
+python src/comparison_analysis.py
+```
+
 ---
 
 ## Repository Structure
