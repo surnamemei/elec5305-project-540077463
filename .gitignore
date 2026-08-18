@@ -3,5 +3,19 @@ __pycache__/
 *.pyc
 data/
 compressed/
-results/
 .cache/
+# Ignore large intermediate result files
+results/*_experiment_details.csv
+results/error_analysis/per_utterance_errors.csv
+results/error_analysis/top_new_errors.csv
+results/baseline_results.csv
+results/mp3_32k_results.csv
+# Keep summary results and figures
+!results/
+!results/figures/
+!results/figures/**
+!results/error_analysis/
+!results/error_analysis/error_summary.csv
+!results/error_analysis/selected_severe_conditions.csv
+!results/*_summary_results.csv
+!results/bootstrap_results.csv

@@ -1,0 +1,5 @@
+dataset,codec,bitrate,num_samples,new_errors,recovered_errors,worsened_samples,improved_samples,unchanged_samples,wav_substitutions,compressed_substitutions,delta_substitutions,wav_deletions,compressed_deletions,delta_deletions,wav_insertions,compressed_insertions,delta_insertions
+test-clean,mp3,16k,500,65,16,101,36,363,268,353,85,18,33,15,36,29,-7
+test-clean,opus,8k,500,64,15,114,35,351,268,372,104,18,32,14,36,35,-1
+test-other,mp3,16k,500,88,8,215,47,238,598,878,280,61,103,42,66,72,6
+test-other,opus,8k,500,98,11,268,34,198,598,1088,490,61,123,62,66,96,30

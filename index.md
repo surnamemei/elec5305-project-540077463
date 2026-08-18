@@ -316,18 +316,33 @@ The low-bitrate MP3 and Opus examples show substantial attenuation and modificat
 - `test-other` + Opus 8 kbps
 - `test-clean` + MP3 16 kbps
 
-<!--
-When selected figures are committed to the repository, uncomment and update
-the paths below.
+## Key Result Figures
 
 <div class="figure">
-  <img src="results/figures/wer_vs_compression_ratio.png" alt="WER versus compression ratio">
+  <img src="results/figures/delta_wer_vs_bitrate.png"
+       alt="WER degradation versus bitrate">
+  <p class="small">
+    Change in WER relative to the uncompressed WAV baseline.
+  </p>
 </div>
 
 <div class="figure">
-  <img src="results/figures/case_studies/test-other_opus_8k_case2_comparison.png" alt="Opus 8 kbps spectrogram comparison">
+  <img src="results/figures/wer_vs_compression_ratio.png"
+       alt="WER versus compression ratio">
+  <p class="small">
+    Trade-off between compression efficiency and ASR performance.
+  </p>
 </div>
--->
+
+## Representative Spectrogram Case
+
+<div class="figure">
+  <img src="results/figures/case_studies/test-other_opus_8k_case2_comparison.png"
+       alt="Opus 8 kbps spectrogram comparison">
+  <p class="small">
+    Example comparison between the original WAV signal and aggressive Opus compression.
+  </p>
+</div>
 
 ## Current Interpretation
 
