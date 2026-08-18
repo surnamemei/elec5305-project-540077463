@@ -15,8 +15,10 @@ NUM_SAMPLES = 500
 RANDOM_SEED = 5305
 DATA_ROOT = "data"
 
-DETAIL_RESULT_PATH = "results/all_experiment_details.csv"
-SUMMARY_RESULT_PATH = "results/summary_results.csv"
+DATASET_NAME = "test-clean"  # Options: "test-clean", "test-other"
+
+DETAIL_RESULT_PATH = f"results/{DATASET_NAME}_experiment_details.csv"
+SUMMARY_RESULT_PATH = f"results/{DATASET_NAME}_summary_results.csv"
 
 CONDITIONS = [
     {"codec": "wav",  "bitrate": "uncompressed"},
@@ -204,11 +206,11 @@ def process_audio(waveform, sample_rate, codec, bitrate):
 # --------------------------------------------------
 # Load dataset
 # --------------------------------------------------
-print("\nLoading LibriSpeech test-clean...")
+print("\nLoading LibriSpeech " + DATASET_NAME + "...")
 
 dataset = torchaudio.datasets.LIBRISPEECH(
     root=DATA_ROOT,
-    url="test-clean",
+    url=DATASET_NAME,
     download=False
 )
 
