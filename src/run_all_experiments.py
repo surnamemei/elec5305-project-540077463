@@ -6,12 +6,12 @@ import random
 import torch
 import torchaudio
 from jiwer import wer
-
+from tqdm import tqdm
 
 # --------------------------------------------------
 # Settings
 # --------------------------------------------------
-NUM_SAMPLES = 100
+NUM_SAMPLES = 500
 RANDOM_SEED = 5305
 DATA_ROOT = "data"
 
@@ -20,12 +20,18 @@ SUMMARY_RESULT_PATH = "results/summary_results.csv"
 
 CONDITIONS = [
     {"codec": "wav",  "bitrate": "uncompressed"},
+
     {"codec": "mp3",  "bitrate": "128k"},
     {"codec": "mp3",  "bitrate": "64k"},
     {"codec": "mp3",  "bitrate": "32k"},
+    {"codec": "mp3",  "bitrate": "24k"},
+    {"codec": "mp3",  "bitrate": "16k"},
+
     {"codec": "opus", "bitrate": "64k"},
     {"codec": "opus", "bitrate": "32k"},
     {"codec": "opus", "bitrate": "16k"},
+    {"codec": "opus", "bitrate": "12k"},
+    {"codec": "opus", "bitrate": "8k"},
 ]
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -239,7 +245,14 @@ for condition in CONDITIONS:
 
     compression_ratios = []
 
-    for sample_number, index in enumerate(sample_indices, start=1):
+    for sample_number, index in enumerate(
+        tqdm(
+            sample_indices,
+            desc=f"{codec.upper()} {bitrate}",
+            unit="sample"
+        ),
+        start=1
+    ):
 
         (
             waveform,
@@ -293,13 +306,13 @@ for condition in CONDITIONS:
             "compression_ratio": compression_ratio,
         })
 
-        print(
-            f"{codec.upper():5s} "
-            f"{bitrate:12s} "
-            f"Sample {sample_number:3d} | "
-            f"WER={sample_wer:.4f} | "
-            f"Compression={compression_ratio:.2f}x"
-        )
+        # print(
+        #     f"{codec.upper():5s} "
+        #     f"{bitrate:12s} "
+        #     f"Sample {sample_number:3d} | "
+        #     f"WER={sample_wer:.4f} | "
+        #     f"Compression={compression_ratio:.2f}x"
+        # )
 
     overall_wer = wer(
         references,
@@ -324,6 +337,18 @@ for condition in CONDITIONS:
         f"Average compression ratio: "
         f"{average_compression_ratio:.2f}x"
     )
+
+# --------------------------------------------------
+# Calculate WER difference from WAV baseline
+# --------------------------------------------------
+wav_wer = next(
+    row["overall_wer"]
+    for row in summary_results
+    if row["codec"] == "wav"
+)
+
+for row in summary_results:
+    row["delta_wer"] = row["overall_wer"] - wav_wer
 
 
 # --------------------------------------------------
@@ -376,6 +401,7 @@ with open(
             "bitrate",
             "num_samples",
             "overall_wer",
+            "delta_wer",
             "average_compression_ratio",
         ]
     )
@@ -396,6 +422,7 @@ for row in summary_results:
         f"{row['codec'].upper():5s} "
         f"{row['bitrate']:12s} | "
         f"WER={row['overall_wer']:.4f} | "
+        f"ΔWER={row['delta_wer']:+.4f} | "
         f"Compression={row['average_compression_ratio']:.2f}x"
     )
 
