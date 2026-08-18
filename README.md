@@ -1,55 +1,54 @@
 # Evaluating the Impact of Lossy Audio Compression on Automatic Speech Recognition Performance
 
-## Project Overview
+ELEC5305 project investigating the robustness of automatic speech recognition (ASR) under MP3 and Opus lossy audio compression.
 
-This ELEC5305 project investigates how lossy audio compression affects the robustness of automatic speech recognition (ASR).
+**Project Site:**  
+https://surnamemei.github.io/elec5305-project-540077463/
 
-Speech recordings from LibriSpeech are compressed using MP3 and Opus at a range of bitrates and then decoded and processed using the same pretrained Wav2Vec2 ASR model. Recognition performance is evaluated using Word Error Rate (WER), while compression efficiency is measured using the average compression ratio relative to uncompressed WAV audio.
+**Proposal:**  
+[ELEC5305 Project Proposal v1.pdf](ELEC5305%20Project%20Proposal%20v1.pdf)
 
-The main research question is:
+---
+
+## Research Question
 
 > **How robust is a modern automatic speech recognition system to lossy audio compression, and at what bitrate or compression ratio does recognition performance begin to degrade significantly?**
 
-A secondary question is:
+Secondary question:
 
 > **Does lossy compression have a greater impact when the underlying speech is already more difficult for the ASR system to recognise?**
 
+---
+
 ## Experimental Setup
 
-Two LibriSpeech evaluation subsets are used:
+The project uses two LibriSpeech evaluation subsets:
 
 - `test-clean`
 - `test-other`
 
-For each subset, 500 utterances are selected using a fixed random seed (`5305`) to ensure reproducibility.
+For each subset, **500 utterances** are selected using the fixed random seed `5305` for reproducibility.
 
-### ASR System
-
-- Pretrained Wav2Vec2 model
-- PyTorch / TorchAudio
-- 16 kHz speech input
-- Word Error Rate calculated using JiWER
+The same pretrained **Wav2Vec2** ASR system is used for every condition.
 
 ### Compression Conditions
 
-#### WAV
-- Uncompressed baseline
+| Codec | Bitrates |
+|---|---|
+| WAV | Uncompressed baseline |
+| MP3 | 128, 64, 32, 24, 16 kbps |
+| Opus | 64, 32, 16, 12, 8 kbps |
 
-#### MP3
-- 128 kbps
-- 64 kbps
-- 32 kbps
-- 24 kbps
-- 16 kbps
+### Main Metrics
 
-#### Opus
-- 64 kbps
-- 32 kbps
-- 16 kbps
-- 12 kbps
-- 8 kbps
+- Word Error Rate (WER)
+- WER change relative to WAV baseline (ΔWER)
+- Average compression ratio
+- 95% paired bootstrap confidence interval
+- Substitution, deletion and insertion error counts
+- Sentence-level and local spectrogram comparison
 
-FFmpeg is used for encoding and decoding the compressed files.
+---
 
 ## Current Results
 
@@ -85,68 +84,207 @@ FFmpeg is used for encoding and decoding the compressed files.
 | Opus 12k | 9.60% | +1.33 pp | 20.92× |
 | Opus 8k | 14.89% | +6.63 pp | 31.52× |
 
-## Statistical Analysis
+---
 
-A paired bootstrap analysis with 2000 resamples is used to estimate 95% confidence intervals for WER change relative to the WAV baseline.
+## Current Findings
 
-Examples of compression conditions with confidence intervals entirely above zero include:
+1. **Moderate lossy compression has little practical effect on clean speech.**
+2. **Severe low-bitrate compression causes clear ASR degradation.**
+3. **The harder `test-other` subset is substantially more vulnerable to aggressive compression.**
+4. **Most additional recognition errors under severe compression are substitutions.**
 
-- `test-clean`, MP3 16 kbps: ΔWER ≈ +0.91 pp, 95% CI [+0.59, +1.29]
-- `test-clean`, Opus 12 kbps: ΔWER ≈ +0.32 pp, 95% CI [+0.09, +0.57]
-- `test-clean`, Opus 8 kbps: ΔWER ≈ +1.15 pp, 95% CI [+0.81, +1.51]
-- `test-other`, MP3 16 kbps: ΔWER ≈ +3.74 pp, 95% CI [+3.07, +4.43]
-- `test-other`, Opus 8 kbps: ΔWER ≈ +6.63 pp, 95% CI [+5.71, +7.62]
+Selected bootstrap results:
 
-The results indicate that severe lossy compression produces consistent ASR degradation, while moderate compression has a much smaller practical effect.
+| Dataset | Condition | ΔWER | 95% CI |
+|---|---|---:|---:|
+| test-clean | MP3 16k | +0.91 pp | [+0.59, +1.29] |
+| test-clean | Opus 12k | +0.32 pp | [+0.09, +0.57] |
+| test-clean | Opus 8k | +1.15 pp | [+0.81, +1.51] |
+| test-other | MP3 16k | +3.74 pp | [+3.07, +4.43] |
+| test-other | Opus 8k | +6.63 pp | [+5.71, +7.62] |
 
-## Error Analysis
+Selected error-type increases:
 
-Per-utterance analysis shows that severe compression increases the number of utterances whose recognition becomes worse.
-
-### Selected severe conditions
-
-- `test-clean`, MP3 16 kbps:
-  - 65 new errors
-  - 101 worsened samples
-  - 16 recovered samples
-
-- `test-clean`, Opus 8 kbps:
-  - 64 new errors
-  - 114 worsened samples
-  - 15 recovered samples
-
-- `test-other`, MP3 16 kbps:
-  - 88 new errors
-  - 215 worsened samples
-  - 8 recovered samples
-
-- `test-other`, Opus 8 kbps:
-  - 98 new errors
-  - 268 worsened samples
-  - 11 recovered samples
-
-Additional word-level analysis shows that most of the extra recognition errors are substitutions.
-
-| Condition | Δ Substitutions | Δ Deletions | Δ Insertions |
+| Condition | ΔS | ΔD | ΔI |
 |---|---:|---:|---:|
 | test-clean MP3 16k | +85 | +15 | -7 |
 | test-clean Opus 8k | +104 | +14 | -1 |
 | test-other MP3 16k | +280 | +42 | +6 |
 | test-other Opus 8k | +490 | +62 | +30 |
 
-This suggests that aggressive compression primarily causes the ASR system to confuse one word with another, rather than simply deleting or inserting words.
+The spectrogram analysis shows substantial attenuation and modification of high-frequency spectral content under very low bitrate compression. These observations are treated as supporting evidence rather than proof of direct causation.
 
-## Signal-Level Analysis
+---
 
-Sentence-level and local spectrogram comparisons have been produced for representative cases where the WAV baseline was recognised correctly but the compressed version introduced a new recognition error.
+## Requirements
 
-The low-bitrate MP3 and Opus cases show substantial attenuation and modification of high-frequency spectral content. These signal-level changes are consistent with the observed increase in substitution errors, although they do not by themselves establish a direct causal relationship.
+### System Requirements
 
-Representative examples include:
+- Python 3.12
+- Linux or WSL recommended
+- FFmpeg with:
+  - `libmp3lame`
+  - `libopus`
 
-- `test-other`, MP3 16 kbps
-- `test-other`, Opus 8 kbps
-- `test-clean`, MP3 16 kbps
+Check FFmpeg:
+
+```bash
+ffmpeg -version
+```
+
+### Python Environment
+
+Create and activate a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Install Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+PyTorch can run on CPU or CUDA. CUDA is optional but significantly speeds up Wav2Vec2 inference.
+
+---
+
+## Dataset Setup
+
+The scripts use LibriSpeech through TorchAudio.
+
+The first time a subset is used, set:
+
+```python
+download=True
+```
+
+After the dataset has been downloaded locally, use:
+
+```python
+download=False
+```
+
+The current experiments use:
+
+```python
+NUM_SAMPLES = 500
+RANDOM_SEED = 5305
+```
+
+Keep the same random seed when reproducing the reported results.
+
+---
+
+## How to Run
+
+Run all commands from the repository root.
+
+### 1. Baseline ASR test
+
+```bash
+python src/baseline_asr.py
+```
+
+Checks the Wav2Vec2 ASR pipeline on LibriSpeech audio.
+
+### 2. Early MP3 experiment
+
+```bash
+python src/experiment_mp3.py
+```
+
+Runs the original MP3-focused pilot experiment. This script is retained as part of the project development history.
+
+### 3. Main compression experiment
+
+```bash
+python src/run_all_experiments.py
+```
+
+Runs WAV, MP3 and Opus conditions for the selected LibriSpeech subset and saves:
+
+- per-utterance results
+- WER summaries
+- compression ratios
+
+The dataset is selected inside the script using:
+
+```python
+DATASET_NAME = "test-clean"
+```
+
+or:
+
+```python
+DATASET_NAME = "test-other"
+```
+
+Run the script once for each subset.
+
+### 4. Generate result figures
+
+```bash
+python src/analyse_results.py
+```
+
+Reads the saved summary CSV files and generates plots including:
+
+- WER vs bitrate
+- ΔWER vs bitrate
+- WER vs compression ratio
+- test-clean vs test-other comparison
+
+### 5. Bootstrap confidence intervals
+
+```bash
+python src/bootstrap_analysis.py
+```
+
+Runs paired bootstrap resampling using the existing per-utterance results and saves:
+
+```text
+results/bootstrap_results.csv
+```
+
+### 6. Error analysis
+
+```bash
+python src/error_analysis.py
+```
+
+Calculates:
+
+- new recognition errors
+- recovered errors
+- worsened / improved utterances
+- substitution, deletion and insertion changes
+
+Outputs are saved under:
+
+```text
+results/error_analysis/
+```
+
+### 7. Sentence-level spectrogram analysis
+
+```bash
+python src/spectrogram_analysis.py
+```
+
+Generates WAV, compressed, difference and combined spectrogram figures for representative cases.
+
+### 8. Local word-level spectrogram analysis
+
+```bash
+python src/local_spectrogram_analysis.py
+```
+
+Generates local spectrogram comparisons around selected substitution-error regions.
+
+---
 
 ## Repository Structure
 
@@ -167,29 +305,38 @@ elec5305-project-540077463/
 │   ├── bootstrap_results.csv
 │   ├── error_analysis/
 │   └── figures/
+├── requirements.txt
 ├── README.md
 ├── index.md
-└── proposal.pdf
+└── ELEC5305 Project Proposal v1.pdf
 ```
 
-## Current Findings
+Large intermediate per-utterance result files and downloaded datasets are intentionally excluded from Git using `.gitignore`.
 
-The current results support three main observations:
+---
 
-1. Moderate lossy compression has little practical effect on ASR performance for clean speech.
-2. Severe compression introduces consistent degradation, with clearer thresholds at low bitrates.
-3. More challenging speech is substantially more vulnerable to aggressive lossy compression than cleaner speech.
+## Reproducibility Notes
+
+- Random seed: `5305`
+- Same utterances are used across all codec conditions within each dataset.
+- The same Wav2Vec2 model is used for every condition.
+- FFmpeg is used for both MP3 and Opus encoding.
+- Bootstrap comparisons are paired by LibriSpeech dataset index.
+- The current GitHub repository stores summary results and analysis figures, while large intermediate files remain local.
+
+For an exact snapshot of the current Python environment, an optional lock file can be generated with:
+
+```bash
+pip freeze > requirements-lock.txt
+```
+
+---
 
 ## Next Steps
 
-The next stage will focus on:
+- refine final visualisations
+- compare codec efficiency more systematically
+- document experimental limitations
+- prepare the final report
+- prepare the project demonstration
 
-- refining plots and statistical visualisation
-- selecting the strongest case-study figures
-- comparing MP3 and Opus robustness more systematically
-- documenting limitations and experimental assumptions
-- preparing the final report and demonstration
-
-## Project Site
-
-https://surnamemei.github.io/elec5305-project-540077463/
