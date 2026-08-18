@@ -12,6 +12,8 @@ title: ELEC5305 Project
   --card: #ffffff;
   --accent: #2563eb;
   --accent-soft: #eff6ff;
+  --success-soft: #ecfdf5;
+  --success: #047857;
 }
 
 .project-wrap {
@@ -41,8 +43,19 @@ title: ELEC5305 Project
   color: var(--muted);
 }
 
+.status-line {
+  margin-top: .95rem;
+  display: inline-block;
+  padding: .38rem .7rem;
+  border-radius: 999px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: .88rem;
+  font-weight: 700;
+}
+
 .badges {
-  margin-top: 1.1rem;
+  margin-top: 1rem;
   display: flex;
   flex-wrap: wrap;
   gap: .55rem;
@@ -56,6 +69,32 @@ title: ELEC5305 Project
   color: #1d4ed8;
   font-size: .88rem;
   font-weight: 600;
+}
+
+.hero-actions {
+  margin-top: 1.15rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .7rem;
+}
+
+.button {
+  display: inline-block;
+  padding: .62rem .9rem;
+  border-radius: 10px;
+  text-decoration: none !important;
+  font-weight: 700;
+  border: 1px solid var(--accent);
+}
+
+.button.primary {
+  background: var(--accent);
+  color: white !important;
+}
+
+.button.secondary {
+  background: white;
+  color: var(--accent) !important;
 }
 
 .section {
@@ -164,6 +203,14 @@ tr:last-child td {
   color: var(--muted);
 }
 
+.references {
+  padding-left: 1.2rem;
+}
+
+.references li {
+  margin-bottom: .8rem;
+}
+
 .footer-note {
   margin-top: 2rem;
   padding-top: 1rem;
@@ -182,9 +229,11 @@ code {
   .grid, .findings {
     grid-template-columns: 1fr;
   }
+
   .hero {
     padding: 1.4rem;
   }
+
   .hero h1 {
     font-size: 1.8rem;
   }
@@ -195,10 +244,14 @@ code {
 
   <div class="hero">
     <h1>Evaluating the Impact of Lossy Audio Compression on Automatic Speech Recognition Performance</h1>
+
     <p>
       ELEC5305 project investigating how MP3 and Opus compression affect a fixed
       Wav2Vec2 automatic speech recognition system across clean and more challenging speech.
     </p>
+
+    <div class="status-line">Project Feedback Stage — preliminary implementation and analysis complete</div>
+
     <div class="badges">
       <span class="badge">Wav2Vec2</span>
       <span class="badge">LibriSpeech</span>
@@ -207,14 +260,21 @@ code {
       <span class="badge">Bootstrap CI</span>
       <span class="badge">Spectrogram analysis</span>
     </div>
+
+    <div class="hero-actions">
+      <a class="button primary" href="ELEC5305%20Project%20Proposal%20v1.pdf">View Proposal PDF</a>
+      <a class="button secondary" href="https://github.com/surnamemei/elec5305-project-540077463">View GitHub Repository</a>
+    </div>
   </div>
 
   <section class="section">
     <h2>Research Question</h2>
+
     <div class="callout">
       <strong>How robust is a modern automatic speech recognition system to lossy audio compression, and at what bitrate or compression ratio does recognition performance begin to degrade significantly?</strong>
       <br><br>
-      Secondary question: <em>Does compression have a greater impact when the underlying speech is already more difficult for the ASR system to recognise?</em>
+      Secondary question:
+      <em>Does compression have a greater impact when the underlying speech is already more difficult for the ASR system to recognise?</em>
     </div>
   </section>
 
@@ -223,10 +283,12 @@ code {
       <div class="value">3.17%</div>
       <div class="label">test-clean WAV baseline WER</div>
     </div>
+
     <div class="card">
       <div class="value">8.26%</div>
       <div class="label">test-other WAV baseline WER</div>
     </div>
+
     <div class="card">
       <div class="value">31.5×</div>
       <div class="label">Approx. compression ratio at Opus 8 kbps</div>
@@ -235,33 +297,106 @@ code {
 
   <section class="section">
     <h2>Experimental Design</h2>
-    <p>Two LibriSpeech evaluation subsets are used: <code>test-clean</code> and <code>test-other</code>.</p>
-    <p>For each subset, <strong>500 utterances</strong> are selected using a fixed random seed (<code>5305</code>) for reproducibility.</p>
-    <p>The same pretrained <strong>Wav2Vec2</strong> ASR model is used for every condition. Audio is compressed with <strong>FFmpeg</strong>, decoded, and evaluated using <strong>Word Error Rate (WER)</strong>. Compression efficiency is measured using the average ratio between original WAV file size and compressed file size.</p>
+
+    <p>
+      Two LibriSpeech evaluation subsets are used:
+      <code>test-clean</code> and <code>test-other</code>.
+    </p>
+
+    <p>
+      For each subset, <strong>500 utterances</strong> are selected using a fixed random seed
+      (<code>5305</code>) for reproducibility.
+    </p>
+
+    <p>
+      The same pretrained <strong>Wav2Vec2</strong> ASR model is used for every condition.
+      Audio is compressed with <strong>FFmpeg</strong>, decoded, and evaluated using
+      <strong>Word Error Rate (WER)</strong>. Compression efficiency is measured using the
+      average ratio between original WAV file size and compressed file size.
+    </p>
 
     <h3>Compression Conditions</h3>
+
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Codec</th><th>Bitrates</th></tr>
+          <tr>
+            <th>Codec</th>
+            <th>Bitrates</th>
+          </tr>
         </thead>
         <tbody>
-          <tr><td>WAV</td><td>Uncompressed baseline</td></tr>
-          <tr><td>MP3</td><td>128, 64, 32, 24, 16 kbps</td></tr>
-          <tr><td>Opus</td><td>64, 32, 16, 12, 8 kbps</td></tr>
+          <tr>
+            <td>WAV</td>
+            <td>Uncompressed baseline</td>
+          </tr>
+          <tr>
+            <td>MP3</td>
+            <td>128, 64, 32, 24, 16 kbps</td>
+          </tr>
+          <tr>
+            <td>Opus</td>
+            <td>64, 32, 16, 12, 8 kbps</td>
+          </tr>
         </tbody>
       </table>
     </div>
   </section>
 
   <section class="section">
-    <h2>Current Results</h2>
+    <h2>Key Findings</h2>
+
+    <div class="findings">
+      <div class="finding">
+        <strong>1. Moderate compression is relatively robust</strong>
+        On <code>test-clean</code>, most moderate MP3 and Opus conditions remain close to the WAV baseline.
+      </div>
+
+      <div class="finding">
+        <strong>2. Severe compression creates clear degradation</strong>
+        Low-bitrate MP3 and Opus conditions produce consistent increases in WER.
+      </div>
+
+      <div class="finding">
+        <strong>3. Harder speech is more vulnerable</strong>
+        <code>test-other</code> shows substantially larger WER increases under the same aggressive compression conditions.
+      </div>
+
+      <div class="finding">
+        <strong>4. Substitutions dominate the extra errors</strong>
+        The majority of additional recognition errors under severe compression are word substitutions rather than deletions or insertions.
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Key Result Figures</h2>
+
+    <div class="figure">
+      <img src="results/figures/delta_wer_vs_bitrate.png" alt="WER degradation versus bitrate">
+      <p class="small">Change in WER relative to the uncompressed WAV baseline.</p>
+    </div>
+
+    <div class="figure">
+      <img src="results/figures/wer_vs_compression_ratio.png" alt="WER versus compression ratio">
+      <p class="small">Trade-off between compression efficiency and ASR performance.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Detailed Results</h2>
 
     <h3>test-clean</h3>
+
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Condition</th><th>WER</th><th>ΔWER</th><th>Compression Ratio</th></tr>
+          <tr>
+            <th>Condition</th>
+            <th>WER</th>
+            <th>ΔWER</th>
+            <th>Compression Ratio</th>
+          </tr>
         </thead>
         <tbody>
           <tr><td>WAV</td><td>3.17%</td><td>0.00 pp</td><td>1.00×</td></tr>
@@ -280,10 +415,16 @@ code {
     </div>
 
     <h3>test-other</h3>
+
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Condition</th><th>WER</th><th>ΔWER</th><th>Compression Ratio</th></tr>
+          <tr>
+            <th>Condition</th>
+            <th>WER</th>
+            <th>ΔWER</th>
+            <th>Compression Ratio</th>
+          </tr>
         </thead>
         <tbody>
           <tr><td>WAV</td><td>8.26%</td><td>0.00 pp</td><td>1.00×</td></tr>
@@ -303,35 +444,22 @@ code {
   </section>
 
   <section class="section">
-    <h2>Key Findings</h2>
-    <div class="findings">
-      <div class="finding">
-        <strong>1. Moderate compression is relatively robust</strong>
-        On <code>test-clean</code>, most moderate MP3 and Opus conditions remain close to the WAV baseline.
-      </div>
-      <div class="finding">
-        <strong>2. Severe compression creates clear degradation</strong>
-        Low-bitrate MP3 and Opus conditions produce consistent increases in WER.
-      </div>
-      <div class="finding">
-        <strong>3. Harder speech is more vulnerable</strong>
-        <code>test-other</code> shows substantially larger WER increases under the same aggressive compression conditions.
-      </div>
-      <div class="finding">
-        <strong>4. Substitutions dominate the extra errors</strong>
-        The majority of additional recognition errors under severe compression are word substitutions rather than deletions or insertions.
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
     <h2>Bootstrap Analysis</h2>
-    <p>A paired bootstrap analysis with <strong>2000 resamples</strong> estimates 95% confidence intervals for the WER change relative to the WAV baseline.</p>
+
+    <p>
+      A paired bootstrap analysis with <strong>2000 resamples</strong> estimates
+      95% confidence intervals for the WER change relative to the WAV baseline.
+    </p>
 
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Dataset</th><th>Condition</th><th>ΔWER</th><th>95% CI</th></tr>
+          <tr>
+            <th>Dataset</th>
+            <th>Condition</th>
+            <th>ΔWER</th>
+            <th>95% CI</th>
+          </tr>
         </thead>
         <tbody>
           <tr><td>test-clean</td><td>MP3 16k</td><td>+0.91 pp</td><td>[+0.59, +1.29]</td></tr>
@@ -344,16 +472,24 @@ code {
     </div>
 
     <div class="callout">
-      The strongest degradation observed so far is <strong>Opus 8 kbps on test-other</strong>, where WER rises from approximately <strong>8.26%</strong> to <strong>14.89%</strong>.
+      The strongest degradation observed so far is
+      <strong>Opus 8 kbps on test-other</strong>, where WER rises from approximately
+      <strong>8.26%</strong> to <strong>14.89%</strong>.
     </div>
   </section>
 
   <section class="section">
     <h2>Error-Type Analysis</h2>
+
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Condition</th><th>Δ Substitutions</th><th>Δ Deletions</th><th>Δ Insertions</th></tr>
+          <tr>
+            <th>Condition</th>
+            <th>Δ Substitutions</th>
+            <th>Δ Deletions</th>
+            <th>Δ Insertions</th>
+          </tr>
         </thead>
         <tbody>
           <tr><td>test-clean MP3 16k</td><td>+85</td><td>+15</td><td>-7</td></tr>
@@ -363,46 +499,88 @@ code {
         </tbody>
       </table>
     </div>
-    <p>For the most severe conditions, substitutions account for the majority of the additional word-level errors. This suggests that aggressive compression most often causes the ASR model to confuse one word with another rather than simply inserting or deleting words.</p>
-  </section>
 
-  <section class="section">
-    <h2>Key Result Figures</h2>
-
-    <div class="figure">
-      <img src="results/figures/delta_wer_vs_bitrate.png" alt="WER degradation versus bitrate">
-      <p class="small">Change in WER relative to the uncompressed WAV baseline.</p>
-    </div>
-
-    <div class="figure">
-      <img src="results/figures/wer_vs_compression_ratio.png" alt="WER versus compression ratio">
-      <p class="small">Trade-off between compression efficiency and ASR performance.</p>
-    </div>
+    <p>
+      For the most severe conditions, substitutions account for the majority of
+      the additional word-level errors. This suggests that aggressive compression
+      most often causes the ASR model to confuse one word with another rather than
+      simply inserting or deleting words.
+    </p>
   </section>
 
   <section class="section">
     <h2>Signal-Level Case Study</h2>
-    <p>Sentence-level and local spectrogram comparisons have been produced for selected utterances where the WAV baseline was recognised correctly but the compressed version introduced a new recognition error.</p>
-    <p>The low-bitrate MP3 and Opus examples show substantial attenuation and modification of high-frequency spectral content. These observations are consistent with the recognition degradation measured above, although the spectrogram differences are treated as supporting evidence rather than proof of direct causation.</p>
+
+    <p>
+      Sentence-level and local spectrogram comparisons have been produced for selected
+      utterances where the WAV baseline was recognised correctly but the compressed
+      version introduced a new recognition error.
+    </p>
+
+    <p>
+      The low-bitrate MP3 and Opus examples show substantial attenuation and modification
+      of high-frequency spectral content. These observations are consistent with the
+      recognition degradation measured above, although the spectrogram differences are
+      treated as supporting evidence rather than proof of direct causation.
+    </p>
 
     <div class="figure">
       <img src="results/figures/case_studies/test-other_opus_8k_case2_comparison.png" alt="Opus 8 kbps spectrogram comparison">
-      <p class="small">Representative test-other spectrogram comparison for aggressive Opus 8 kbps compression.</p>
+      <p class="small">
+        Representative test-other spectrogram comparison for aggressive Opus 8 kbps compression.
+      </p>
     </div>
   </section>
 
   <section class="section">
     <h2>Current Interpretation</h2>
+
     <ol>
       <li><strong>Moderate lossy compression has little practical effect on ASR performance for clean speech.</strong></li>
       <li><strong>Severe low-bitrate compression produces measurable and statistically consistent degradation.</strong></li>
       <li><strong>More challenging speech is substantially more vulnerable to compression-induced distortion.</strong></li>
     </ol>
-    <p>Opus appears able to maintain strong ASR performance at relatively high compression ratios, but very aggressive settings such as 8 kbps lead to substantial degradation.</p>
+
+    <p>
+      Opus appears able to maintain strong ASR performance at relatively high compression
+      ratios, but very aggressive settings such as 8 kbps lead to substantial degradation.
+    </p>
+  </section>
+
+  <section class="section">
+    <h2>References</h2>
+
+    <ol class="references">
+      <li>
+        M. Borsky, P. Mizera, P. Pollak, and J. Nouza,
+        “Dithering techniques in automatic recognition of speech corrupted by MP3 compression:
+        Analysis, solutions and experiments,” <em>Speech Communication</em>, vol. 86,
+        pp. 75–84, 2017.
+      </li>
+
+      <li>
+        L. Drude, J. Heymann, A. Schwarz, and J.-M. Valin,
+        “Multi-Channel Opus Compression for Far-Field Automatic Speech Recognition with a Fixed Bitrate Budget,”
+        <em>Proc. Interspeech</em>, pp. 1669–1673, 2021.
+      </li>
+
+      <li>
+        A. Baevski, Y. Zhou, A. Mohamed, and M. Auli,
+        “wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations,”
+        <em>Advances in Neural Information Processing Systems</em>, vol. 33, 2020.
+      </li>
+
+      <li>
+        V. Panayotov, G. Chen, D. Povey, and S. Khudanpur,
+        “LibriSpeech: An ASR Corpus Based on Public Domain Audio Books,”
+        <em>Proc. IEEE ICASSP</em>, pp. 5206–5210, 2015.
+      </li>
+    </ol>
   </section>
 
   <section class="section">
     <h2>Next Steps</h2>
+
     <ul>
       <li>refine final plots and statistical visualisation</li>
       <li>select the strongest case-study figures</li>
@@ -414,8 +592,13 @@ code {
 
   <section class="section">
     <h2>Repository</h2>
-    <p><strong>GitHub repository:</strong><br>
-    <a href="https://github.com/surnamemei/elec5305-project-540077463">github.com/surnamemei/elec5305-project-540077463</a></p>
+
+    <p>
+      <strong>GitHub repository:</strong><br>
+      <a href="https://github.com/surnamemei/elec5305-project-540077463">
+        github.com/surnamemei/elec5305-project-540077463
+      </a>
+    </p>
   </section>
 
   <div class="footer-note">
