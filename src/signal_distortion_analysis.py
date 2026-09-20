@@ -242,38 +242,156 @@ def compress_audio(
 # ==================================================
 
 def align_waveforms(
-    reference,
-    processed
-):
+    reference: torch.Tensor,
+    processed: torch.Tensor,
+    max_shift_samples: int = 4000
+) -> tuple[torch.Tensor, torch.Tensor, int]:
     """
-    Temporary first-pass alignment.
+    Align processed audio to reference using normalized
+    cross-correlation over a limited lag range.
 
-    Both signals are trimmed to the same length.
+    Returns:
+        aligned_reference
+        aligned_processed
+        estimated_delay_samples
 
-    IMPORTANT:
-    This does not yet compensate for codec delay
-    or padding. Delay-aware alignment will be added
-    later when addressing feedback point 23.
+    Positive delay means the processed signal is delayed
+    relative to the reference.
     """
 
-    min_length = min(
-        reference.shape[-1],
-        processed.shape[-1]
+    # Convert to mono
+    if reference.shape[0] > 1:
+        reference = reference.mean(
+            dim=0,
+            keepdim=True
+        )
+
+    if processed.shape[0] > 1:
+        processed = processed.mean(
+            dim=0,
+            keepdim=True
+        )
+
+    ref = reference.squeeze(0)
+    proc = processed.squeeze(0)
+
+    # Use CPU for correlation
+    ref = ref.cpu()
+    proc = proc.cpu()
+
+    # Limit search range
+    max_shift_samples = min(
+        max_shift_samples,
+        len(ref) - 1,
+        len(proc) - 1
     )
 
-    reference = reference[
-        ...,
-        :min_length
-    ]
+    best_lag = 0
+    best_score = -1.0
 
-    processed = processed[
-        ...,
+    for lag in range(
+        -max_shift_samples,
+        max_shift_samples + 1
+    ):
+
+        if lag >= 0:
+            ref_segment = ref[
+                :min(
+                    len(ref),
+                    len(proc) - lag
+                )
+            ]
+
+            proc_segment = proc[
+                lag:
+                lag + len(ref_segment)
+            ]
+
+        else:
+            shift = -lag
+
+            proc_segment = proc[
+                :min(
+                    len(proc),
+                    len(ref) - shift
+                )
+            ]
+
+            ref_segment = ref[
+                shift:
+                shift + len(proc_segment)
+            ]
+
+        if len(ref_segment) < 100:
+            continue
+
+        denominator = (
+            torch.linalg.vector_norm(ref_segment)
+            *
+            torch.linalg.vector_norm(proc_segment)
+        )
+
+        if float(denominator.item()) == 0.0:
+            continue
+
+        score = (
+            torch.dot(
+                ref_segment,
+                proc_segment
+            )
+            /
+            denominator
+        )
+
+        score_value = float(
+            score.item()
+        )
+
+        if score_value > best_score:
+            best_score = score_value
+            best_lag = lag
+
+    # Apply estimated lag
+    if best_lag >= 0:
+
+        aligned_processed = proc[
+            best_lag:
+        ]
+
+        aligned_reference = ref[
+            :len(aligned_processed)
+        ]
+
+    else:
+
+        shift = -best_lag
+
+        aligned_reference = ref[
+            shift:
+        ]
+
+        aligned_processed = proc[
+            :len(aligned_reference)
+        ]
+
+    # Final equal-length trim
+    min_length = min(
+        len(aligned_reference),
+        len(aligned_processed)
+    )
+
+    aligned_reference = aligned_reference[
         :min_length
-    ]
+    ].unsqueeze(0)
+
+    aligned_processed = aligned_processed[
+        :min_length
+    ].unsqueeze(0)
 
     return (
-        reference,
-        processed
+        aligned_reference,
+        aligned_processed,
+        best_lag
     )
 
 
@@ -658,10 +776,17 @@ for condition in CONDITIONS:
 
         (
             aligned_ref,
-            aligned_comp
+            aligned_comp,
+            estimated_delay_samples
         ) = align_waveforms(
             waveform,
             compressed_waveform
+        )
+        
+        estimated_delay_ms = (
+            estimated_delay_samples
+            / sample_rate
+            * 1000.0
         )
 
         # ------------------------------------------
@@ -740,6 +865,12 @@ for condition in CONDITIONS:
 
             "bandwidth_change_hz":
                 bandwidth_change,
+
+            "estimated_delay_samples":
+                estimated_delay_samples,
+
+            "estimated_delay_ms":
+                estimated_delay_ms,
         })
 
         # ------------------------------------------

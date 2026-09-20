@@ -24,6 +24,10 @@ Secondary question:
 
 Lossy compression may introduce measurable signal-level distortion before substantially affecting Wav2Vec2's higher-level internal representations or recognition performance. At sufficiently severe compression, representation drift may increase together with WER.
 
+### Scope of Evaluation
+
+The primary objective of this project is machine speech recognition robustness rather than human perceptual audio quality. Perceptual quality metrics may be considered as optional supporting measures, but the main analysis focuses on the relationship between codec-induced signal distortion, Wav2Vec2 representation drift and ASR performance.
+
 ## Experimental Setup
 
 The project uses two LibriSpeech evaluation subsets:
@@ -177,6 +181,40 @@ Check FFmpeg:
 ```bash
 ffmpeg -version
 ```
+### FFmpeg and Codec Configuration
+
+The experiments were run using FFmpeg 6.1.1-3ubuntu5 on Ubuntu.
+
+The following encoders were used:
+
+- MP3: `libmp3lame`
+- Opus: `libopus`
+
+All LibriSpeech inputs are mono 16 kHz speech signals. Target bitrates are explicitly specified using FFmpeg's `-b:a` option.
+
+The MP3 encoding command follows the form:
+
+```bash
+ffmpeg -y -loglevel error -i input.wav \
+-codec:a libmp3lame \
+-b:a BITRATE \
+compressed.mp3
+```
+
+The Opus encoding command follows the form:
+
+```bash
+ffmpeg -y -loglevel error -i input.wav \
+-codec:a libopus \
+-b:a BITRATE \
+compressed.opus
+```
+
+No additional VBR or CBR mode option was explicitly specified. The encoder defaults were retained consistently across all compression conditions.
+
+Actual effective bitrate is measured from the encoded file size and audio duration rather than assuming that the requested bitrate is achieved exactly.
+
+Codec comparisons are based on explicit encoder configurations rather than file extensions alone. The encoder implementation, target bitrate, sample rate and channel configuration are kept consistent and documented for every condition so that differences can be attributed to the codec settings rather than uncontrolled encoding choices.
 
 ### Python Environment
 
