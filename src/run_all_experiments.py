@@ -244,8 +244,10 @@ for condition in CONDITIONS:
 
     references = []
     predictions = []
-
+    actual_bitrates = []
     compression_ratios = []
+    total_compressed_bytes = 0
+    total_duration_seconds = 0.0
 
     for sample_number, index in enumerate(
         tqdm(
@@ -264,7 +266,7 @@ for condition in CONDITIONS:
             chapter_id,
             utterance_id,
         ) = dataset[index]
-
+        duration_seconds = waveform.shape[-1] / sample_rate
         (
             processed_waveform,
             processed_sample_rate,
@@ -277,7 +279,11 @@ for condition in CONDITIONS:
             codec,
             bitrate
         )
-
+        actual_bitrate_kbps = (
+            8 * compressed_size
+            / duration_seconds
+            / 1000
+        )
         prediction = recognise(
             processed_waveform,
             processed_sample_rate
@@ -291,6 +297,9 @@ for condition in CONDITIONS:
         references.append(reference)
         predictions.append(prediction)
         compression_ratios.append(compression_ratio)
+        actual_bitrates.append(actual_bitrate_kbps)
+        total_compressed_bytes += compressed_size
+        total_duration_seconds += duration_seconds
 
         detail_results.append({
             "codec": codec,
@@ -305,6 +314,7 @@ for condition in CONDITIONS:
             "wer": sample_wer,
             "original_size_bytes": original_size,
             "compressed_size_bytes": compressed_size,
+            "actual_bitrate_kbps": actual_bitrate_kbps,
             "compression_ratio": compression_ratio,
         })
 
@@ -324,13 +334,23 @@ for condition in CONDITIONS:
     average_compression_ratio = (
         sum(compression_ratios) / len(compression_ratios)
     )
-
+    average_actual_bitrate_kbps = (
+        sum(actual_bitrates) / len(actual_bitrates)
+    )
+    aggregate_actual_bitrate_kbps = (
+        8 * total_compressed_bytes
+        / total_duration_seconds
+        / 1000
+    )
+    
     summary_results.append({
         "codec": codec,
         "bitrate": bitrate,
         "num_samples": len(references),
         "overall_wer": overall_wer,
         "average_compression_ratio": average_compression_ratio,
+        "average_actual_bitrate_kbps": average_actual_bitrate_kbps,
+        "aggregate_actual_bitrate_kbps": aggregate_actual_bitrate_kbps,
     })
 
     print("\nCondition result:")
@@ -378,6 +398,7 @@ with open(
             "wer",
             "original_size_bytes",
             "compressed_size_bytes",
+            "actual_bitrate_kbps",
             "compression_ratio",
         ]
     )
@@ -404,7 +425,9 @@ with open(
             "num_samples",
             "overall_wer",
             "delta_wer",
+            "average_actual_bitrate_kbps",
             "average_compression_ratio",
+            "aggregate_actual_bitrate_kbps",
         ]
     )
 
@@ -425,6 +448,8 @@ for row in summary_results:
         f"{row['bitrate']:12s} | "
         f"WER={row['overall_wer']:.4f} | "
         f"ΔWER={row['delta_wer']:+.4f} | "
+        f"Bitrate={row['average_actual_bitrate_kbps']:.2f} kbps | "
+        f"Aggregate bitrate={row['aggregate_actual_bitrate_kbps']:.2f} kbps | "
         f"Compression={row['average_compression_ratio']:.2f}x"
     )
 
