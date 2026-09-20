@@ -12,7 +12,7 @@ Rather than treating WER as the only outcome, the project investigates whether m
 https://surnamemei.github.io/elec5305-project-540077463/
 
 **Proposal:**  
-[ELEC5305 Project Proposal v1.pdf](ELEC5305%20Project%20Proposal%20v1.pdf)
+[ELEC5305 Project Proposal v2.pdf](ELEC5305%20Project%20Proposal%20v2.pdf)
 
 ---
 

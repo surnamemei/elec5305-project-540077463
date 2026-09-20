@@ -71,7 +71,6 @@ measurable WER degradation
 
 ---
 
-````md
 ## Literature Grounding
 
 The project is grounded in three related research areas: self-supervised speech representation learning, perceptual audio coding, and robustness of automatic speech recognition to changes in the input domain.
@@ -90,7 +89,9 @@ Prior work on Wav2Vec2 has shown that changes in input or domain conditions can 
 
 ### Neural Codec Extension
 
-A neural codec such as EnCodec is considered only as an optional extension. Its purpose would not be to create a simple codec ranking, but to test whether the observed relationship between signal distortion, representation drift, and WER also appears under a substantially different compression architecture.
+EnCodec was evaluated as an optional extension after the main MP3 and Opus analysis was completed. Its purpose was not to create a separate codec ranking, but to test whether the observed relationship between signal distortion, representation drift, and WER also appears under a substantially different neural codec architecture.
+
+A separate 16 → 24 → 16 kHz resampling control was included so that sample-rate conversion effects were not incorrectly attributed to EnCodec compression.
 
 ### Literature Progression
 
