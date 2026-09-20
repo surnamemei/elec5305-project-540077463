@@ -14,6 +14,32 @@ A secondary question was then added:
 
 > **Does lossy compression have a greater impact when the underlying speech is already more difficult for the ASR system to recognise?**
 
+### Refinement After Preliminary Results and Instructor Feedback
+
+The original research question focused mainly on identifying the bitrate or compression ratio at which ASR performance begins to degrade.
+
+However, the preliminary results showed that this threshold-finding question was not sufficient to explain the most interesting behaviour in the data. Moderate MP3 and Opus compression could introduce measurable changes to the signal while WER remained close to the WAV baseline.
+
+Following instructor feedback, the project therefore shifted from asking only:
+
+> **When does recognition begin to degrade?**
+
+to the more explanatory question:
+
+> **How do MP3 and Opus compression alter the acoustic signal and the internal representations of Wav2Vec2, and which codec-induced distortions are associated with the onset of ASR errors?**
+
+This refinement changed the emphasis of the project from a WER-only codec comparison to a three-level analysis:
+
+```text
+Signal distortion
+        ↓
+Representation drift
+        ↓
+Recognition degradation
+```
+
+The original research question is retained in this document because it reflects the development history of the project, while the revised question is used for the final analysis.
+
 This gave the project a clear experimental structure. The main independent variables would be:
 
 - audio codec,
@@ -336,6 +362,7 @@ Opus:
 16k
 12k
 8k
+6k
 ```
 
 AI assistance during this stage mainly involved:
@@ -654,7 +681,118 @@ This wording was maintained throughout the analysis to avoid over-claiming causa
 
 ---
 
-## 17. Stage Eleven — Add Local Spectrogram Analysis
+## 17. Stage Eleven — Quantify Signal Distortion
+
+After the spectrogram case studies, the project was extended from qualitative visual inspection to quantitative signal-level analysis.
+
+This led to:
+
+```text
+src/signal_distortion_analysis.py
+```
+
+The analysis measures:
+
+- overall log-spectral distortion;
+- frequency-dependent distortion;
+- effective retained bandwidth;
+- codec delay / alignment.
+
+This stage showed that measurable signal degradation can become substantial before recognition performance changes by the same amount.
+
+---
+
+## 18. Stage Twelve — Analyse Wav2Vec2 Hidden Representations
+
+Instructor feedback highlighted that WER alone could not explain why recognition remained stable under moderate compression.
+
+The project therefore added:
+
+```text
+src/representation_analysis.py
+```
+
+Wav2Vec2 hidden representations were compared at:
+
+```text
+Layer 1
+Layer 6
+Layer 12
+```
+
+using cosine similarity and representation drift.
+
+The results showed that codec-induced changes were generally larger in early layers and smaller in deeper layers under moderate compression.
+
+Under severe compression, deeper-layer drift also increased together with WER.
+
+This provided the representation-level component of the final project framework.
+
+---
+
+## 19. Stage Thirteen — Integrate Signal, Representation and Task Results
+
+The separate analyses were then combined using:
+
+```text
+src/integrated_analysis.py
+```
+
+The integrated analysis links:
+
+```text
+log-spectral distortion
+        ↓
+Layer 1 / 6 / 12 representation drift
+        ↓
+WER
+```
+
+This became one of the central figures of the project because it shows that signal distortion magnitude alone does not fully explain ASR failure.
+
+---
+
+## 20. Stage Fourteen — Analyse Representative Failure Cases
+
+To complement aggregate statistics, individual utterances were selected where severe compression produced large recognition errors.
+
+This led to:
+
+```text
+src/failure_case_analysis.py
+```
+
+Representative cases show how previously correct WAV recognition can become dominated by substitutions and deletions under aggressive compression.
+
+---
+
+## 21. Optional Extension — EnCodec
+
+After the MP3 / Opus analysis was complete, a small neural-codec extension was added using EnCodec.
+
+This extension was not intended as a separate codec-ranking experiment. Its purpose was to test whether the same signal → representation → recognition pattern also appears under a different codec architecture.
+
+Because the mono EnCodec model operates at 24 kHz while LibriSpeech and Wav2Vec2 operate at 16 kHz, the experiment included an uncompressed:
+
+```text
+16 kHz → 24 kHz → 16 kHz
+```
+
+resampling control.
+
+The tested EnCodec conditions were:
+
+```text
+24 kbps
+6 kbps
+1.5 kbps
+```
+
+The resampling control caused only negligible recognition change, while increasingly aggressive EnCodec compression produced larger representation drift and higher WER.
+
+This extension therefore provided additional supporting evidence for the main three-level interpretation without changing the core MP3 / Opus scope.
+
+## 22. Stage Eleven — Add Local Spectrogram Analysis
 
 A sentence-level spectrogram can make a short recognition error difficult to inspect visually.
 
@@ -678,7 +816,7 @@ The selected local windows were manually estimated around representative errors,
 
 ---
 
-## 18. Stage Twelve — Compare Codecs and Speech Difficulty Directly
+## 23. Stage Twelve — Compare Codecs and Speech Difficulty Directly
 
 After the main WER, bootstrap, error-type and spectrogram analyses were complete, one remaining issue was that two important comparisons were present in the data but were not yet summarised directly.
 
@@ -705,7 +843,7 @@ src/comparison_analysis.py
 
 # How AI Was Used
 
-## 19. AI as an Iterative Development Assistant
+## 24. AI as an Iterative Development Assistant
 
 AI was used extensively during this project, but the project did not appear as one complete generated solution.
 
@@ -749,7 +887,7 @@ AI assistance included:
 
 ---
 
-## 20. My Role in the AI-Assisted Workflow
+## 25. My Role in the AI-Assisted Workflow
 
 My role was not limited to accepting generated code.
 
@@ -781,7 +919,7 @@ and:
 
 ---
 
-## 21. Development Timeline in One View
+## 26. Development Timeline in One View
 
 The project can be summarised as:
 
@@ -871,7 +1009,7 @@ The project therefore grew logically rather than by simply adding unrelated feat
 
 # Current Interpretation
 
-## 22. Main Pattern Observed So Far
+## 27. Main Pattern Observed So Far
 
 The current results support three main conclusions.
 
@@ -905,7 +1043,7 @@ Instead, the result is treated as evidence that codec design is an important par
 
 ---
 
-## 23. Why the Current Scope Is Considered Sufficient
+## 28. Why the Current Scope Is Considered Sufficient
 
 Possible future extensions include:
 
@@ -950,7 +1088,7 @@ The remaining work is mainly to:
 
 # Discussion Points for the Professor
 
-## 24. Questions I Would Like Feedback On
+## 29. Questions I Would Like Feedback On
 
 1. **Is MP3 + Opus a sufficient codec scope for the final project?**
 
@@ -968,6 +1106,6 @@ The remaining work is mainly to:
 
 # Short Explanation for Discussion
 
-## 25. One-Minute Project Summary
+## 30. One-Minute Project Summary
 
 > I wanted to investigate whether lossy compression removes information that matters to an ASR model even when the speech may still remain understandable to a human listener. With AI assistance, I first narrowed the project so that codec and bitrate were the main variables while the ASR model remained fixed. I then built the project in stages rather than attempting everything at once. I first verified a WAV-to-Wav2Vec2 baseline, then tested one MP3 condition, then generalised the code to MP3 and Opus across several bitrates. I used a fixed set of 500 LibriSpeech utterances for reproducibility and first tested `test-clean`. After seeing that moderate compression produced only small changes, I added `test-other` to test whether already difficult speech was more vulnerable. I then added paired bootstrap confidence intervals to distinguish stable degradation from small fluctuations, followed by substitution/deletion/insertion analysis to understand how recognition failed. Finally, I added spectrogram case studies to connect the ASR results back to signal-level changes. The current pattern is that moderate compression is relatively robust, while very low bitrates cause clear degradation, especially for the more difficult `test-other` speech.

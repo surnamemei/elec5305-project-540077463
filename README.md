@@ -150,6 +150,7 @@ The central objective is to determine how signal-level distortion and learned-re
 | Opus 16k | 3.18% | +0.01 pp | 15.98× |
 | Opus 12k | 3.49% | +0.32 pp | 20.93× |
 | Opus 8k | 4.32% | +1.15 pp | 31.41× |
+| Opus 6k | 5.45% | +2.28 pp | 40.28× |
 
 ### test-other
 
@@ -166,6 +167,7 @@ The central objective is to determine how signal-level distortion and learned-re
 | Opus 16k | 8.90% | +0.64 pp | 16.08× |
 | Opus 12k | 9.60% | +1.33 pp | 20.92× |
 | Opus 8k | 14.89% | +6.63 pp | 31.52× |
+| Opus 6k | 19.79% | +11.53 pp | 40.23× |
 
 ---
 
@@ -185,6 +187,8 @@ Selected bootstrap results:
 | test-clean | Opus 8k | +1.15 pp | [+0.81, +1.51] |
 | test-other | MP3 16k | +3.74 pp | [+3.07, +4.43] |
 | test-other | Opus 8k | +6.63 pp | [+5.71, +7.62] |
+| test-clean | Opus 6k | +2.28 pp | [+1.86, +2.76] |
+| test-other | Opus 6k | +11.53 pp | [+10.30, +12.83] |
 
 Selected error-type increases:
 
@@ -194,6 +198,8 @@ Selected error-type increases:
 | test-clean Opus 8k | +104 | +14 | -1 |
 | test-other MP3 16k | +280 | +42 | +6 |
 | test-other Opus 8k | +490 | +62 | +30 |
+| test-clean Opus 6k | +199 | +27 | +6 |
+| test-other Opus 6k | +868 | +111 | +33 |
 
 The spectrogram analysis shows substantial attenuation and modification of high-frequency spectral content under very low bitrate compression. These observations are treated as supporting evidence rather than proof of direct causation.
 
@@ -435,12 +441,17 @@ elec5305-project-540077463/
 │   ├── baseline_asr.py
 │   ├── experiment_mp3.py
 │   ├── run_all_experiments.py
-│   ├── analyse_results.py
+│   ├──analyse_results.py
 │   ├── bootstrap_analysis.py
 │   ├── error_analysis.py
 │   ├── spectrogram_analysis.py
 │   ├── local_spectrogram_analysis.py
-│   └── comparison_analysis.py
+│   ├── signal_distortion_analysis.py
+│   ├── representation_analysis.py
+│   ├── integrated_analysis.py
+│   ├── failure_case_analysis.py
+│   ├── comparison_analysis.py
+│   ├── encodec_extension.py
 ├── results/
 │   ├── baseline_results.csv
 │   ├── mp3_32k_results.csv
@@ -449,6 +460,11 @@ elec5305-project-540077463/
 │   ├── test-clean_summary_results.csv
 │   ├── test-other_summary_results.csv
 │   ├── bootstrap_results.csv
+│   ├── signal_distortion_summary.csv
+│   ├── representation_similarity_summary.csv
+│   ├── integrated_analysis_summary.csv
+│   ├── encodec_extension_results.csv
+│   ├── encodec_extension_summary.csv
 │   ├── error_analysis/
 │   ├── comparison_analysis/
 │   └── figures/
@@ -524,10 +540,12 @@ This provides a more informative explanation of compression robustness than WER-
 - prepare the final research report;
 - prepare the project demonstration video.
 
-A neural audio codec, EnCodec, was evaluated as an optional extension after the MP3/Opus analysis was completed. The purpose of this extension was to test whether the observed signal → representation → WER relationship also generalises to a neural codec architecture.
+### Optional EnCodec Extension
 
-The EnCodec experiment used a separate 16 → 24 → 16 kHz resampling control to distinguish codec effects from sample-rate conversion effects. The control produced only a negligible WER change, while EnCodec showed progressively larger representation drift and recognition degradation as bitrate was reduced from 24 kbps to 6 kbps and finally to 1.5 kbps.
+EnCodec was evaluated as an optional extension after the MP3/Opus analysis was completed. Its purpose was to test whether the observed signal → representation → WER relationship also generalises to a neural codec architecture.
 
-If included, EnCodec will not be treated as a separate codec-ranking experiment. It will be used only to test whether the signal → representation → WER relationship observed for MP3 and Opus also appears under a neural codec architecture.
+Because the 24 kHz mono EnCodec model operates at a different sample rate from LibriSpeech and Wav2Vec2, the experiment included an uncompressed 16 → 24 → 16 kHz resampling control.
 
-Because the standard 24 kHz mono EnCodec model operates at a different sample rate from LibriSpeech and Wav2Vec2, any EnCodec experiment will include an uncompressed 16 → 24 → 16 kHz resampling control. This prevents resampling effects from being incorrectly attributed to neural codec compression.
+The resampling control produced only a negligible WER change, while increasingly aggressive EnCodec compression produced larger representation drift and recognition degradation. WER increased from 4.22% for the WAV baseline to 5.17% at EnCodec 6 kbps and 13.06% at EnCodec 1.5 kbps.
+
+This extension is treated as supporting evidence for the main MP3/Opus analysis rather than as a separate codec-ranking experiment.

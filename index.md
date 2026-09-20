@@ -553,9 +553,8 @@ test-clean utterances.
 </div>
 
 <p>
-The results suggest that Wav2Vec2 progressively reduces codec-induced perturbations
-across its hidden layers. However, this robustness becomes weaker when compression
-is sufficiently severe.
+The results suggest that Codec-induced representation drift is progressively smaller in deeper Wav2Vec2 layers under moderate compression. 
+However, this robustness becomes weaker when compression is sufficiently severe.
 </p>
 
 </section>
