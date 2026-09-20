@@ -33,7 +33,7 @@ title: ELEC5305 Project
 
 .hero h1 {
   margin: 0 0 .7rem 0;
-  font-size: 2.25rem;
+  font-size: 2.2rem;
   line-height: 1.15;
 }
 
@@ -101,10 +101,6 @@ title: ELEC5305 Project
   margin-top: 2rem;
 }
 
-.section h2 {
-  margin-bottom: .7rem;
-}
-
 .callout {
   border-left: 4px solid var(--accent);
   background: var(--soft);
@@ -128,7 +124,7 @@ title: ELEC5305 Project
 }
 
 .card .value {
-  font-size: 1.65rem;
+  font-size: 1.6rem;
   font-weight: 750;
   margin-bottom: .15rem;
 }
@@ -203,12 +199,8 @@ tr:last-child td {
   color: var(--muted);
 }
 
-.references {
-  padding-left: 1.2rem;
-}
-
 .references li {
-  margin-bottom: .8rem;
+  margin-bottom: .7rem;
 }
 
 .footer-note {
@@ -242,367 +234,620 @@ code {
 
 <div class="project-wrap">
 
-  <div class="hero">
-    <h1>Evaluating the Impact of Lossy Audio Compression on Automatic Speech Recognition Performance</h1>
+<div class="hero">
 
-    <p>
-      ELEC5305 project investigating how MP3 and Opus compression affect a fixed
-      Wav2Vec2 automatic speech recognition system across clean and more challenging speech.
-    </p>
+<h1>Why Is Wav2Vec2 Robust to Lossy Audio Compression?</h1>
 
-    <div class="status-line">Project Feedback Stage — preliminary implementation and analysis complete</div>
+<p>
+A signal-, representation-, and task-level study of MP3 and Opus compression,
+investigating why Wav2Vec2 can remain robust despite measurable codec-induced distortion.
+</p>
 
-    <div class="badges">
-      <span class="badge">Wav2Vec2</span>
-      <span class="badge">LibriSpeech</span>
-      <span class="badge">MP3 + Opus</span>
-      <span class="badge">500 samples / subset</span>
-      <span class="badge">Bootstrap CI</span>
-      <span class="badge">Spectrogram analysis</span>
-    </div>
+<div class="status-line">
+Core experiments complete — final analysis and reporting stage
+</div>
 
-    <div class="hero-actions">
-      <a class="button primary" href="ELEC5305%20Project%20Proposal%20v1.pdf">View Proposal PDF</a>
-      <a class="button secondary" href="https://github.com/surnamemei/elec5305-project-540077463">View GitHub Repository</a>
-    </div>
-  </div>
+<div class="badges">
+<span class="badge">Wav2Vec2</span>
+<span class="badge">LibriSpeech</span>
+<span class="badge">MP3 + Opus</span>
+<span class="badge">Signal Distortion</span>
+<span class="badge">Representation Drift</span>
+<span class="badge">Bootstrap CI</span>
+<span class="badge">EnCodec Extension</span>
+</div>
 
-  <section class="section">
-    <h2>Research Question</h2>
+<div class="hero-actions">
+<a class="button primary" href="ELEC5305%20Project%20Proposal%20v1.pdf">
+View Proposal PDF
+</a>
 
-    <div class="callout">
-      <strong>How robust is a modern automatic speech recognition system to lossy audio compression, and at what bitrate or compression ratio does recognition performance begin to degrade significantly?</strong>
-      <br><br>
-      Secondary question:
-      <em>Does compression have a greater impact when the underlying speech is already more difficult for the ASR system to recognise?</em>
-    </div>
-  </section>
+<a class="button secondary"
+href="https://github.com/surnamemei/elec5305-project-540077463">
+View GitHub Repository
+</a>
+</div>
 
-  <div class="grid">
-    <div class="card">
-      <div class="value">3.17%</div>
-      <div class="label">test-clean WAV baseline WER</div>
-    </div>
+</div>
 
-    <div class="card">
-      <div class="value">8.26%</div>
-      <div class="label">test-other WAV baseline WER</div>
-    </div>
+<section class="section">
 
-    <div class="card">
-      <div class="value">31.5×</div>
-      <div class="label">Approx. compression ratio at Opus 8 kbps</div>
-    </div>
-  </div>
+<h2>Research Question</h2>
 
-  <section class="section">
-    <h2>Experimental Design</h2>
+<div class="callout">
 
-    <p>
-      Two LibriSpeech evaluation subsets are used:
-      <code>test-clean</code> and <code>test-other</code>.
-    </p>
+<strong>
+How do MP3 and Opus compression alter the acoustic signal and the internal
+representations of Wav2Vec2, and which codec-induced distortions are associated
+with the onset of ASR errors?
+</strong>
 
-    <p>
-      For each subset, <strong>500 utterances</strong> are selected using a fixed random seed
-      (<code>5305</code>) for reproducibility.
-    </p>
+<br><br>
 
-    <p>
-      The same pretrained <strong>Wav2Vec2</strong> ASR model is used for every condition.
-      Audio is compressed with <strong>FFmpeg</strong>, decoded, and evaluated using
-      <strong>Word Error Rate (WER)</strong>. Compression efficiency is measured using the
-      average ratio between original WAV file size and compressed file size.
-    </p>
+Secondary question:
 
-    <h3>Compression Conditions</h3>
+<em>
+Is Wav2Vec2 robust because lossy codecs preserve the acoustic information
+important to the recogniser even when measurable signal distortion is already substantial?
+</em>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Codec</th>
-            <th>Bitrates</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>WAV</td>
-            <td>Uncompressed baseline</td>
-          </tr>
-          <tr>
-            <td>MP3</td>
-            <td>128, 64, 32, 24, 16 kbps</td>
-          </tr>
-          <tr>
-            <td>Opus</td>
-            <td>64, 32, 16, 12, 8 kbps</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+</div>
 
-  <section class="section">
-    <h2>Key Findings</h2>
+</section>
 
-    <div class="findings">
-      <div class="finding">
-        <strong>1. Moderate compression is relatively robust</strong>
-        On <code>test-clean</code>, most moderate MP3 and Opus conditions remain close to the WAV baseline.
-      </div>
+<section class="section">
 
-      <div class="finding">
-        <strong>2. Severe compression creates clear degradation</strong>
-        Low-bitrate MP3 and Opus conditions produce consistent increases in WER.
-      </div>
+<h2>Project Objective</h2>
 
-      <div class="finding">
-        <strong>3. Harder speech is more vulnerable</strong>
-        <code>test-other</code> shows substantially larger WER increases under the same aggressive compression conditions.
-      </div>
+<p>
+Rather than treating Word Error Rate (WER) as the only outcome, this project
+connects three levels of analysis:
+</p>
 
-      <div class="finding">
-        <strong>4. Substitutions dominate the extra errors</strong>
-        The majority of additional recognition errors under severe compression are word substitutions rather than deletions or insertions.
-      </div>
-    </div>
-  </section>
+<div class="grid">
 
-  <section class="section">
-    <h2>Key Result Figures</h2>
+<div class="card">
+<div class="value">1</div>
+<div class="label"><strong>Signal level</strong><br>spectral distortion and retained bandwidth</div>
+</div>
 
-    <div class="figure">
-      <img src="results/figures/delta_wer_vs_bitrate.png" alt="WER degradation versus bitrate">
-      <p class="small">Change in WER relative to the uncompressed WAV baseline.</p>
-    </div>
+<div class="card">
+<div class="value">2</div>
+<div class="label"><strong>Representation level</strong><br>Wav2Vec2 hidden-layer drift</div>
+</div>
 
-    <div class="figure">
-      <img src="results/figures/wer_vs_compression_ratio.png" alt="WER versus compression ratio">
-      <p class="small">Trade-off between compression efficiency and ASR performance.</p>
-    </div>
-  </section>
+<div class="card">
+<div class="value">3</div>
+<div class="label"><strong>Task level</strong><br>WER and recognition errors</div>
+</div>
 
-  <section class="section">
-    <h2>Detailed Results</h2>
+</div>
 
-    <h3>test-clean</h3>
+</section>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Condition</th>
-            <th>WER</th>
-            <th>ΔWER</th>
-            <th>Compression Ratio</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>WAV</td><td>3.17%</td><td>0.00 pp</td><td>1.00×</td></tr>
-          <tr><td>MP3 128k</td><td>3.15%</td><td>-0.02 pp</td><td>1.95×</td></tr>
-          <tr><td>MP3 64k</td><td>3.10%</td><td>-0.07 pp</td><td>3.90×</td></tr>
-          <tr><td>MP3 32k</td><td>3.27%</td><td>+0.11 pp</td><td>7.78×</td></tr>
-          <tr><td>MP3 24k</td><td>3.19%</td><td>+0.02 pp</td><td>10.34×</td></tr>
-          <tr><td><strong>MP3 16k</strong></td><td><strong>4.08%</strong></td><td><strong>+0.91 pp</strong></td><td><strong>15.40×</strong></td></tr>
-          <tr><td>Opus 64k</td><td>3.19%</td><td>+0.02 pp</td><td>3.59×</td></tr>
-          <tr><td>Opus 32k</td><td>3.13%</td><td>-0.04 pp</td><td>8.15×</td></tr>
-          <tr><td>Opus 16k</td><td>3.18%</td><td>+0.01 pp</td><td>15.98×</td></tr>
-          <tr><td><strong>Opus 12k</strong></td><td><strong>3.49%</strong></td><td><strong>+0.32 pp</strong></td><td><strong>20.93×</strong></td></tr>
-          <tr><td><strong>Opus 8k</strong></td><td><strong>4.32%</strong></td><td><strong>+1.15 pp</strong></td><td><strong>31.41×</strong></td></tr>
-        </tbody>
-      </table>
-    </div>
+<section class="section">
 
-    <h3>test-other</h3>
+<h2>Experimental Design</h2>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Condition</th>
-            <th>WER</th>
-            <th>ΔWER</th>
-            <th>Compression Ratio</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>WAV</td><td>8.26%</td><td>0.00 pp</td><td>1.00×</td></tr>
-          <tr><td>MP3 128k</td><td>8.50%</td><td>+0.24 pp</td><td>1.95×</td></tr>
-          <tr><td>MP3 64k</td><td>8.54%</td><td>+0.27 pp</td><td>3.89×</td></tr>
-          <tr><td>MP3 32k</td><td>8.95%</td><td>+0.68 pp</td><td>7.75×</td></tr>
-          <tr><td><strong>MP3 24k</strong></td><td><strong>9.69%</strong></td><td><strong>+1.42 pp</strong></td><td><strong>10.30×</strong></td></tr>
-          <tr><td><strong>MP3 16k</strong></td><td><strong>12.00%</strong></td><td><strong>+3.74 pp</strong></td><td><strong>15.33×</strong></td></tr>
-          <tr><td>Opus 64k</td><td>8.33%</td><td>+0.07 pp</td><td>3.64×</td></tr>
-          <tr><td>Opus 32k</td><td>8.36%</td><td>+0.10 pp</td><td>8.34×</td></tr>
-          <tr><td>Opus 16k</td><td>8.90%</td><td>+0.64 pp</td><td>16.08×</td></tr>
-          <tr><td><strong>Opus 12k</strong></td><td><strong>9.60%</strong></td><td><strong>+1.33 pp</strong></td><td><strong>20.92×</strong></td></tr>
-          <tr><td><strong>Opus 8k</strong></td><td><strong>14.89%</strong></td><td><strong>+6.63 pp</strong></td><td><strong>31.52×</strong></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+<p>
+The main experiment uses the fixed pretrained
+<code>WAV2VEC2_ASR_BASE_960H</code> model and two LibriSpeech subsets:
+<code>test-clean</code> and <code>test-other</code>.
+</p>
 
-  <section class="section">
-    <h2>Bootstrap Analysis</h2>
+<p>
+For each subset, 500 utterances are selected using the fixed random seed
+<code>5305</code>. The same utterances are used across all codec conditions.
+</p>
 
-    <p>
-      A paired bootstrap analysis with <strong>2000 resamples</strong> estimates
-      95% confidence intervals for the WER change relative to the WAV baseline.
-    </p>
+<div class="table-wrap">
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Dataset</th>
-            <th>Condition</th>
-            <th>ΔWER</th>
-            <th>95% CI</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>test-clean</td><td>MP3 16k</td><td>+0.91 pp</td><td>[+0.59, +1.29]</td></tr>
-          <tr><td>test-clean</td><td>Opus 12k</td><td>+0.32 pp</td><td>[+0.09, +0.57]</td></tr>
-          <tr><td>test-clean</td><td>Opus 8k</td><td>+1.15 pp</td><td>[+0.81, +1.51]</td></tr>
-          <tr><td>test-other</td><td>MP3 16k</td><td>+3.74 pp</td><td>[+3.07, +4.43]</td></tr>
-          <tr><td>test-other</td><td>Opus 8k</td><td>+6.63 pp</td><td>[+5.71, +7.62]</td></tr>
-        </tbody>
-      </table>
-    </div>
+<table>
 
-    <div class="callout">
-      The strongest degradation observed so far is
-      <strong>Opus 8 kbps on test-other</strong>, where WER rises from approximately
-      <strong>8.26%</strong> to <strong>14.89%</strong>.
-    </div>
-  </section>
+<thead>
+<tr>
+<th>Codec</th>
+<th>Bitrates</th>
+</tr>
+</thead>
 
-  <section class="section">
-    <h2>Error-Type Analysis</h2>
+<tbody>
+<tr>
+<td>WAV</td>
+<td>Uncompressed baseline</td>
+</tr>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Condition</th>
-            <th>Δ Substitutions</th>
-            <th>Δ Deletions</th>
-            <th>Δ Insertions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>test-clean MP3 16k</td><td>+85</td><td>+15</td><td>-7</td></tr>
-          <tr><td>test-clean Opus 8k</td><td>+104</td><td>+14</td><td>-1</td></tr>
-          <tr><td>test-other MP3 16k</td><td>+280</td><td>+42</td><td>+6</td></tr>
-          <tr><td>test-other Opus 8k</td><td>+490</td><td>+62</td><td>+30</td></tr>
-        </tbody>
-      </table>
-    </div>
+<tr>
+<td>MP3</td>
+<td>128, 64, 32, 24, 16 kbps</td>
+</tr>
 
-    <p>
-      For the most severe conditions, substitutions account for the majority of
-      the additional word-level errors. This suggests that aggressive compression
-      most often causes the ASR model to confuse one word with another rather than
-      simply inserting or deleting words.
-    </p>
-  </section>
+<tr>
+<td>Opus</td>
+<td>64, 32, 16, 12, 8, 6 kbps</td>
+</tr>
+</tbody>
 
-  <section class="section">
-    <h2>Signal-Level Case Study</h2>
+</table>
 
-    <p>
-      Sentence-level and local spectrogram comparisons have been produced for selected
-      utterances where the WAV baseline was recognised correctly but the compressed
-      version introduced a new recognition error.
-    </p>
+</div>
 
-    <p>
-      The low-bitrate MP3 and Opus examples show substantial attenuation and modification
-      of high-frequency spectral content. These observations are consistent with the
-      recognition degradation measured above, although the spectrogram differences are
-      treated as supporting evidence rather than proof of direct causation.
-    </p>
+<p>
+All MP3 and Opus files are encoded using FFmpeg with
+<code>libmp3lame</code> and <code>libopus</code>.
+Actual effective bitrate is measured from encoded file size and duration.
+</p>
 
-    <div class="figure">
-      <img src="results/figures/case_studies/test-other_opus_8k_case2_comparison.png" alt="Opus 8 kbps spectrogram comparison">
-      <p class="small">
-        Representative test-other spectrogram comparison for aggressive Opus 8 kbps compression.
-      </p>
-    </div>
-  </section>
+</section>
 
-  <section class="section">
-    <h2>Current Interpretation</h2>
+<section class="section">
 
-    <ol>
-      <li><strong>Moderate lossy compression has little practical effect on ASR performance for clean speech.</strong></li>
-      <li><strong>Severe low-bitrate compression produces measurable and statistically consistent degradation.</strong></li>
-      <li><strong>More challenging speech is substantially more vulnerable to compression-induced distortion.</strong></li>
-    </ol>
+<h2>Main Recognition Results</h2>
 
-    <p>
-      Opus appears able to maintain strong ASR performance at relatively high compression
-      ratios, but very aggressive settings such as 8 kbps lead to substantial degradation.
-    </p>
-  </section>
+<div class="grid">
 
-  <section class="section">
-    <h2>References</h2>
+<div class="card">
+<div class="value">3.17%</div>
+<div class="label">test-clean WAV baseline WER</div>
+</div>
 
-    <ol class="references">
-      <li>
-        M. Borsky, P. Mizera, P. Pollak, and J. Nouza,
-        “Dithering techniques in automatic recognition of speech corrupted by MP3 compression:
-        Analysis, solutions and experiments,” <em>Speech Communication</em>, vol. 86,
-        pp. 75–84, 2017.
-      </li>
+<div class="card">
+<div class="value">5.45%</div>
+<div class="label">test-clean Opus 6 kbps WER</div>
+</div>
 
-      <li>
-        L. Drude, J. Heymann, A. Schwarz, and J.-M. Valin,
-        “Multi-Channel Opus Compression for Far-Field Automatic Speech Recognition with a Fixed Bitrate Budget,”
-        <em>Proc. Interspeech</em>, pp. 1669–1673, 2021.
-      </li>
+<div class="card">
+<div class="value">19.79%</div>
+<div class="label">test-other Opus 6 kbps WER</div>
+</div>
 
-      <li>
-        A. Baevski, Y. Zhou, A. Mohamed, and M. Auli,
-        “wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations,”
-        <em>Advances in Neural Information Processing Systems</em>, vol. 33, 2020.
-      </li>
+</div>
 
-      <li>
-        V. Panayotov, G. Chen, D. Povey, and S. Khudanpur,
-        “LibriSpeech: An ASR Corpus Based on Public Domain Audio Books,”
-        <em>Proc. IEEE ICASSP</em>, pp. 5206–5210, 2015.
-      </li>
-    </ol>
-  </section>
+<div class="table-wrap">
 
-  <section class="section">
-    <h2>Next Steps</h2>
+<table>
 
-    <ul>
-      <li>refine final plots and statistical visualisation</li>
-      <li>select the strongest case-study figures</li>
-      <li>compare MP3 and Opus robustness more systematically</li>
-      <li>document experimental limitations</li>
-      <li>prepare the final report and project demonstration</li>
-    </ul>
-  </section>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Condition</th>
+<th>WER</th>
+<th>ΔWER</th>
+<th>Compression Ratio</th>
+</tr>
+</thead>
 
-  <section class="section">
-    <h2>Repository</h2>
+<tbody>
 
-    <p>
-      <strong>GitHub repository:</strong><br>
-      <a href="https://github.com/surnamemei/elec5305-project-540077463">
-        github.com/surnamemei/elec5305-project-540077463
-      </a>
-    </p>
-  </section>
+<tr>
+<td>test-clean</td>
+<td>WAV</td>
+<td>3.17%</td>
+<td>0.00 pp</td>
+<td>1.00×</td>
+</tr>
 
-  <div class="footer-note">
-    ELEC5305 project — current results are preliminary and may be refined as the project progresses.
-  </div>
+<tr>
+<td>test-clean</td>
+<td>MP3 16k</td>
+<td>4.08%</td>
+<td>+0.91 pp</td>
+<td>15.40×</td>
+</tr>
+
+<tr>
+<td>test-clean</td>
+<td>Opus 8k</td>
+<td>4.32%</td>
+<td>+1.15 pp</td>
+<td>31.41×</td>
+</tr>
+
+<tr>
+<td>test-clean</td>
+<td><strong>Opus 6k</strong></td>
+<td><strong>5.45%</strong></td>
+<td><strong>+2.28 pp</strong></td>
+<td><strong>40.28×</strong></td>
+</tr>
+
+<tr>
+<td>test-other</td>
+<td>WAV</td>
+<td>8.26%</td>
+<td>0.00 pp</td>
+<td>1.00×</td>
+</tr>
+
+<tr>
+<td>test-other</td>
+<td>MP3 16k</td>
+<td>12.00%</td>
+<td>+3.74 pp</td>
+<td>15.33×</td>
+</tr>
+
+<tr>
+<td>test-other</td>
+<td>Opus 8k</td>
+<td>14.89%</td>
+<td>+6.63 pp</td>
+<td>31.52×</td>
+</tr>
+
+<tr>
+<td>test-other</td>
+<td><strong>Opus 6k</strong></td>
+<td><strong>19.79%</strong></td>
+<td><strong>+11.53 pp</strong></td>
+<td><strong>40.23×</strong></td>
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+<p class="small">
+Selected representative conditions are shown here. Full bitrate sweeps are available
+in the repository results.
+</p>
+
+</section>
+
+<section class="section">
+
+<h2>Three-Level Analysis</h2>
+
+<div class="figure">
+<img src="results/figures/integrated_analysis.png"
+alt="Integrated signal representation and recognition analysis">
+
+<p class="small">
+Integrated analysis linking log-spectral distortion, Wav2Vec2 representation drift,
+and WER across representative compression conditions.
+</p>
+</div>
+
+<div class="findings">
+
+<div class="finding">
+<strong>Signal distortion can appear before large WER changes</strong>
+Moderate compression can alter the acoustic signal while recognition remains close
+to the WAV baseline.
+</div>
+
+<div class="finding">
+<strong>Early representations are more sensitive</strong>
+Layer 1 generally shows substantially larger codec-induced drift than Layers 6 and 12.
+</div>
+
+<div class="finding">
+<strong>Deeper representations remain more stable</strong>
+Under moderate compression, much of the perturbation visible in early layers is reduced
+in deeper Wav2Vec2 representations.
+</div>
+
+<div class="finding">
+<strong>Severe compression eventually affects deeper layers</strong>
+At aggressive low bitrates, deeper-layer drift increases together with larger WER changes.
+</div>
+
+</div>
+
+</section>
+
+<section class="section">
+
+<h2>Representation-Level Analysis</h2>
+
+<div class="figure">
+<img src="results/figures/representation_drift_by_layer.png"
+alt="Wav2Vec2 representation drift across layers">
+
+<p class="small">
+Mean representation drift for Layers 1, 6 and 12 across 100 fixed
+test-clean utterances.
+</p>
+</div>
+
+<p>
+The results suggest that Wav2Vec2 progressively reduces codec-induced perturbations
+across its hidden layers. However, this robustness becomes weaker when compression
+is sufficiently severe.
+</p>
+
+</section>
+
+<section class="section">
+
+<h2>Signal-Level Analysis</h2>
+
+<div class="figure">
+<img src="results/figures/frequency_distortion_comparison.png"
+alt="Frequency dependent distortion">
+
+<p class="small">
+Frequency-dependent distortion under MP3 and Opus compression.
+</p>
+</div>
+
+<p>
+Very low bitrate conditions show substantial modification of the acoustic signal
+and reduced retained bandwidth. However, the magnitude of signal distortion alone
+does not fully predict ASR failure.
+</p>
+
+</section>
+
+<section class="section">
+
+<h2>Statistical and Error Analysis</h2>
+
+<p>
+Paired bootstrap analysis is used to estimate confidence intervals for ΔWER.
+The strongest main-experiment degradation occurs at Opus 6 kbps.
+</p>
+
+<div class="table-wrap">
+
+<table>
+
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Condition</th>
+<th>ΔWER</th>
+<th>95% CI</th>
+</tr>
+</thead>
+
+<tbody>
+
+<tr>
+<td>test-clean</td>
+<td>MP3 16k</td>
+<td>+0.91 pp</td>
+<td>[+0.59, +1.29]</td>
+</tr>
+
+<tr>
+<td>test-clean</td>
+<td>Opus 6k</td>
+<td>+2.28 pp</td>
+<td>[+1.86, +2.76]</td>
+</tr>
+
+<tr>
+<td>test-other</td>
+<td>MP3 16k</td>
+<td>+3.74 pp</td>
+<td>[+3.07, +4.43]</td>
+</tr>
+
+<tr>
+<td>test-other</td>
+<td>Opus 6k</td>
+<td>+11.53 pp</td>
+<td>[+10.30, +12.83]</td>
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+<p>
+Recognition failures under severe compression are dominated by substitutions,
+with smaller increases in deletions and insertions.
+</p>
+
+</section>
+
+<section class="section">
+
+<h2>Optional Neural Codec Extension</h2>
+
+<p>
+EnCodec was evaluated as a small extension to test whether the same
+signal → representation → recognition pattern also appears with a neural codec.
+</p>
+
+<p>
+Because the mono EnCodec model operates at 24 kHz, an uncompressed
+<code>16 → 24 → 16 kHz</code> resampling control was included.
+</p>
+
+<div class="table-wrap">
+
+<table>
+
+<thead>
+<tr>
+<th>Condition</th>
+<th>WER</th>
+<th>ΔWER</th>
+<th>Layer 12 Drift</th>
+</tr>
+</thead>
+
+<tbody>
+
+<tr>
+<td>WAV</td>
+<td>4.22%</td>
+<td>0.00 pp</td>
+<td>0.000</td>
+</tr>
+
+<tr>
+<td>Resampling control</td>
+<td>4.28%</td>
+<td>+0.06 pp</td>
+<td>0.001</td>
+</tr>
+
+<tr>
+<td>EnCodec 24k</td>
+<td>4.28%</td>
+<td>+0.06 pp</td>
+<td>0.016</td>
+</tr>
+
+<tr>
+<td>EnCodec 6k</td>
+<td>5.17%</td>
+<td>+0.94 pp</td>
+<td>0.029</td>
+</tr>
+
+<tr>
+<td><strong>EnCodec 1.5k</strong></td>
+<td><strong>13.06%</strong></td>
+<td><strong>+8.83 pp</strong></td>
+<td><strong>0.110</strong></td>
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="figure">
+<img src="results/figures/encodec_extension.png"
+alt="EnCodec extension analysis">
+
+<p class="small">
+The resampling control produces negligible recognition change, while increasingly
+severe EnCodec compression is associated with larger representation drift and WER.
+</p>
+</div>
+
+</section>
+
+<section class="section">
+
+<h2>Current Interpretation</h2>
+
+<div class="callout">
+
+The results suggest that measurable codec-induced signal distortion can occur
+before recognition performance degrades strongly.
+
+<br><br>
+
+Wav2Vec2 appears to suppress part of this perturbation through its learned
+representations, particularly in deeper layers. Under sufficiently severe compression,
+deeper representation drift also increases and is accompanied by substantially higher WER.
+
+</div>
+
+<p>
+This makes the project more than a codec-ranking experiment: the main contribution
+is the connection between signal degradation, learned representation stability,
+and downstream recognition performance.
+</p>
+
+</section>
+
+<section class="section">
+
+<h2>Representative Failure Cases</h2>
+
+<p>
+Individual failure analysis confirms that severe compression can transform
+previously correct WAV recognition into large substitution- and deletion-heavy errors.
+Representative cases are stored in:
+</p>
+
+<p>
+<code>results/error_analysis/selected_failure_cases.csv</code>
+</p>
+
+<p>
+and
+</p>
+
+<p>
+<code>results/error_analysis/selected_failure_cases.txt</code>
+</p>
+
+</section>
+
+<section class="section">
+
+<h2>References</h2>
+
+<ol class="references">
+
+<li>
+A. Baevski, Y. Zhou, A. Mohamed, and M. Auli,
+“wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations,”
+2020.
+</li>
+
+<li>
+W.-N. Hsu et al.,
+“Robust wav2vec 2.0: Analyzing Domain Shift in Self-Supervised Pre-Training,”
+2021.
+</li>
+
+<li>
+J.-M. Valin, K. Vos, and T. Terriberry,
+“Definition of the Opus Audio Codec,” RFC 6716, 2012.
+</li>
+
+<li>
+V. Panayotov, G. Chen, D. Povey, and S. Khudanpur,
+“LibriSpeech: An ASR Corpus Based on Public Domain Audio Books,”
+Proc. IEEE ICASSP, 2015.
+</li>
+
+<li>
+A. Défossez et al.,
+“High Fidelity Neural Audio Compression,”
+2022.
+</li>
+
+</ol>
+
+</section>
+
+<section class="section">
+
+<h2>Next Steps</h2>
+
+<ul>
+<li>finalise literature grounding and related-work discussion</li>
+<li>select the strongest figures for the final report</li>
+<li>document limitations and interpretation carefully</li>
+<li>prepare the final research report</li>
+<li>prepare the project demonstration video</li>
+</ul>
+
+</section>
+
+<section class="section">
+
+<h2>Project Repository</h2>
+
+<p>
+Full source code, experiment outputs, analysis scripts, and reproducibility notes are available at:
+</p>
+
+<p>
+<a href="https://github.com/surnamemei/elec5305-project-540077463">
+github.com/surnamemei/elec5305-project-540077463
+</a>
+</p>
+
+</section>
+
+<div class="footer-note">
+ELEC5305 project — core experiments complete; final interpretation and reporting are in progress.
+</div>
 
 </div>
