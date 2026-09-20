@@ -39,6 +39,26 @@ The same pretrained **Wav2Vec2** ASR system is used for every condition.
 
 All compression conditions are evaluated using the same pretrained Wav2Vec2 model, `WAV2VEC2_ASR_BASE_960H`. The model weights, decoding method and sample-rate handling are kept fixed throughout the experiment. No retraining or fine-tuning is performed, so differences in recognition performance can be attributed to changes in the input audio rather than changes in the recogniser.
 
+### Controlled Speech Corpus
+
+LibriSpeech is used as the controlled evaluation corpus because it provides standard 16 kHz speech recordings together with reference transcripts.
+
+The main experiment uses the `test-clean` subset, while `test-other` is used as a more challenging secondary robustness condition. The same fixed sampling procedure and random seed are used so that codec conditions are compared on identical source utterances.
+
+### Evaluation Set Size
+
+The initial pilot used a smaller number of utterances to verify feasibility. For the main experiment, the evaluation set was increased to 500 fixed utterances per subset.
+
+This larger sample size reduces the influence of individual recognition errors and provides a more reliable basis for comparing small WER differences between compression conditions.
+
+The same 500 utterances are reused across all codec conditions within each subset.
+
+### Paired Evaluation
+
+All codec conditions within each LibriSpeech subset are evaluated using exactly the same 500 source utterances.
+
+The fixed random seed `5305` is used to select the utterance indices once, and the same indices are reused for WAV, MP3 and Opus conditions. This paired design allows each compressed result to be compared directly with the corresponding WAV baseline utterance and supports paired statistical analysis.
+
 ### Compression Conditions
 
 | Codec | Bitrates |
@@ -61,6 +81,10 @@ To identify where ASR robustness begins to break down, lower Opus bitrates are i
 - 95% paired bootstrap confidence interval
 - Substitution, deletion and insertion error counts
 - Sentence-level and local spectrogram comparison
+
+WER and recognition error statistics are calculated using JiWER. The same transcript normalisation procedure is applied consistently across all codec conditions to ensure fair comparison.
+
+Substitution, deletion and insertion counts are analysed separately to determine how recognition failures change under severe compression. In the strongest low-bitrate conditions, the largest increase is observed in substitution errors, with smaller increases in deletions and insertions.
 
 ---
 

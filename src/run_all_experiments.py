@@ -15,7 +15,7 @@ NUM_SAMPLES = 500
 RANDOM_SEED = 5305
 DATA_ROOT = "data"
 
-DATASET_NAME = "test-clean"  # Options: "test-clean", "test-other"
+DATASET_NAME = "test-other"  # Options: "test-clean", "test-other"
 
 DETAIL_RESULT_PATH = f"results/{DATASET_NAME}_experiment_details.csv"
 SUMMARY_RESULT_PATH = f"results/{DATASET_NAME}_summary_results.csv"

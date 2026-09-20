@@ -598,25 +598,23 @@ def main() -> None:
     selected = summary_df[
         (
             (
-                summary_df["codec"]
-                == "mp3"
+                summary_df["codec"] == "mp3"
             )
             &
             (
-                summary_df["bitrate"]
-                == "16k"
+                summary_df["bitrate"] == "16k"
             )
         )
         |
         (
             (
-                summary_df["codec"]
-                == "opus"
+                summary_df["codec"] == "opus"
             )
             &
             (
-                summary_df["bitrate"]
-                == "8k"
+                summary_df["bitrate"].isin(
+                    ["8k", "6k"]
+                )
             )
         )
     ]
