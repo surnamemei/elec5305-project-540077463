@@ -258,7 +258,7 @@ Core experiments complete — final analysis and reporting stage
 </div>
 
 <div class="hero-actions">
-<a class="button primary" href="ELEC5305%20Project%20Proposal%20v1.pdf">
+<a class="button primary" href="ELEC5305%20Project%20Proposal%20v2.pdf">
 View Proposal PDF
 </a>
 
