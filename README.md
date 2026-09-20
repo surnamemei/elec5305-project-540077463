@@ -1,6 +1,6 @@
-# Evaluating the Impact of Lossy Audio Compression on Automatic Speech Recognition Performance
+# Why Is Wav2Vec2 Robust to Lossy Audio Compression? A Signal and Representation-Level Study of MP3 and Opus
 
-ELEC5305 project investigating the robustness of automatic speech recognition (ASR) under MP3 and Opus lossy audio compression.
+ELEC5305 project investigating why Wav2Vec2 remains robust under MP3 and Opus lossy audio compression, and how signal distortion and learned representation changes relate to the onset of ASR errors.
 
 **Project Site:**  
 https://surnamemei.github.io/elec5305-project-540077463/
@@ -12,13 +12,17 @@ https://surnamemei.github.io/elec5305-project-540077463/
 
 ## Research Question
 
-> **How robust is a modern automatic speech recognition system to lossy audio compression, and at what bitrate or compression ratio does recognition performance begin to degrade significantly?**
+> **How do MP3 and Opus compression alter the acoustic signal and the internal representations of Wav2Vec2, and which codec-induced distortions are associated with the onset of ASR errors?**
 
 Secondary question:
 
-> **Does lossy compression have a greater impact when the underlying speech is already more difficult for the ASR system to recognise?**
+> **Is Wav2Vec2 robust because lossy codecs preserve the acoustic information important to the recogniser even when measurable waveform or spectral distortion is already substantial?**
 
 ---
+
+## Working Hypothesis
+
+Lossy compression may introduce measurable signal-level distortion before substantially affecting Wav2Vec2's higher-level internal representations or recognition performance. At sufficiently severe compression, representation drift may increase together with WER.
 
 ## Experimental Setup
 
@@ -31,6 +35,10 @@ For each subset, **500 utterances** are selected using the fixed random seed `53
 
 The same pretrained **Wav2Vec2** ASR system is used for every condition.
 
+### Fixed ASR Model
+
+All compression conditions are evaluated using the same pretrained Wav2Vec2 model, `WAV2VEC2_ASR_BASE_960H`. The model weights, decoding method and sample-rate handling are kept fixed throughout the experiment. No retraining or fine-tuning is performed, so differences in recognition performance can be attributed to changes in the input audio rather than changes in the recogniser.
+
 ### Compression Conditions
 
 | Codec | Bitrates |
@@ -38,6 +46,12 @@ The same pretrained **Wav2Vec2** ASR system is used for every condition.
 | WAV | Uncompressed baseline |
 | MP3 | 128, 64, 32, 24, 16 kbps |
 | Opus | 64, 32, 16, 12, 8 kbps |
+
+### Why Lower Opus Bitrates Are Included
+
+Opus is specifically designed for efficient speech coding, and 16 kbps is still within a practical operating range for wideband speech. Therefore, the lack of substantial WER degradation at 16 kbps is not unexpected.
+
+To identify where ASR robustness begins to break down, lower Opus bitrates are included so that the experiment covers a robust region, a transition region, and a clearly degraded region.
 
 ### Main Metrics
 
@@ -49,6 +63,14 @@ The same pretrained **Wav2Vec2** ASR system is used for every condition.
 - Sentence-level and local spectrogram comparison
 
 ---
+
+## Preliminary Observation
+
+The initial experiments showed that substantial bitrate reduction did not immediately produce a corresponding increase in WER.
+
+In particular, moderate MP3 and Opus compression remained close to the WAV baseline, while clearer degradation appeared only at more aggressive low-bitrate conditions.
+
+This result changes the focus of the project. Rather than asking only at which bitrate WER begins to increase, the project now investigates why Wav2Vec2 remains robust despite measurable codec-induced signal distortion, and what signal or representation-level changes are associated with the onset of recognition errors.
 
 ## Current Results
 

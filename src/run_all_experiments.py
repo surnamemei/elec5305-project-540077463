@@ -34,6 +34,7 @@ CONDITIONS = [
     {"codec": "opus", "bitrate": "16k"},
     {"codec": "opus", "bitrate": "12k"},
     {"codec": "opus", "bitrate": "8k"},
+    {"codec": "opus", "bitrate": "6k"},
 ]
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
