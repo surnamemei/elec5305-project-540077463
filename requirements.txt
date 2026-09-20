@@ -16,3 +16,4 @@ pandas
 matplotlib
 soundfile
 tqdm
+encodec

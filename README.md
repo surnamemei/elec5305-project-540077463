@@ -524,7 +524,9 @@ This provides a more informative explanation of compression robustness than WER-
 - prepare the final research report;
 - prepare the project demonstration video.
 
-A neural audio codec such as EnCodec may be considered as an optional extension after the MP3/Opus analysis is complete, primarily to test whether the observed relationship between signal distortion, representation drift and WER generalises to a different codec architecture.
+A neural audio codec, EnCodec, was evaluated as an optional extension after the MP3/Opus analysis was completed. The purpose of this extension was to test whether the observed signal → representation → WER relationship also generalises to a neural codec architecture.
+
+The EnCodec experiment used a separate 16 → 24 → 16 kHz resampling control to distinguish codec effects from sample-rate conversion effects. The control produced only a negligible WER change, while EnCodec showed progressively larger representation drift and recognition degradation as bitrate was reduced from 24 kbps to 6 kbps and finally to 1.5 kbps.
 
 If included, EnCodec will not be treated as a separate codec-ranking experiment. It will be used only to test whether the signal → representation → WER relationship observed for MP3 and Opus also appears under a neural codec architecture.
 
