@@ -2,6 +2,12 @@
 
 ELEC5305 project investigating why Wav2Vec2 remains robust under MP3 and Opus lossy audio compression, and how signal distortion and learned representation changes relate to the onset of ASR errors.
 
+### Overall Objective
+
+The overall objective is to explain the robustness of Wav2Vec2 to lossy audio compression by connecting codec-induced signal distortion, changes in internal learned representations, and the onset of recognition errors.
+
+Rather than treating WER as the only outcome, the project investigates whether measurable acoustic degradation can occur while higher-level representations and recognition performance remain relatively stable, and how this relationship changes under severe compression.
+
 **Project Site:**  
 https://surnamemei.github.io/elec5305-project-540077463/
 
@@ -69,7 +75,7 @@ The fixed random seed `5305` is used to select the utterance indices once, and t
 |---|---|
 | WAV | Uncompressed baseline |
 | MP3 | 128, 64, 32, 24, 16 kbps |
-| Opus | 64, 32, 16, 12, 8 kbps |
+| Opus | 64, 32, 16, 12, 8, 6 kbps |
 
 ### Why Lower Opus Bitrates Are Included
 
@@ -99,6 +105,33 @@ The initial experiments showed that substantial bitrate reduction did not immedi
 In particular, moderate MP3 and Opus compression remained close to the WAV baseline, while clearer degradation appeared only at more aggressive low-bitrate conditions.
 
 This result changes the focus of the project. Rather than asking only at which bitrate WER begins to increase, the project now investigates why Wav2Vec2 remains robust despite measurable codec-induced signal distortion, and what signal or representation-level changes are associated with the onset of recognition errors.
+
+## Three-Level Analysis Framework
+
+The final analysis is organised across three connected levels:
+
+### Level 1 – Signal
+
+Codec-induced changes are measured using:
+
+- log-spectral distortion;
+- frequency-dependent spectral distortion;
+- effective retained bandwidth.
+
+### Level 2 – Learned Representation
+
+Wav2Vec2 hidden representations are compared between the original WAV signal and compressed versions using cosine similarity and representation drift across selected transformer layers.
+
+### Level 3 – Recognition Task
+
+ASR performance is evaluated using:
+
+- Word Error Rate (WER);
+- ΔWER relative to the WAV baseline;
+- substitution, deletion and insertion error counts;
+- paired bootstrap confidence intervals.
+
+The central objective is to determine how signal-level distortion and learned-representation drift relate to the point at which recognition performance begins to degrade.
 
 ## Current Results
 
@@ -266,6 +299,24 @@ Keep the same random seed when reproducing the reported results.
 
 Run all commands from the repository root.
 
+### Recommended Execution Order
+
+For the main analysis, run the following scripts from the repository root:
+
+```bash
+python src/run_all_experiments.py
+python src/bootstrap_analysis.py
+python src/error_analysis.py
+python src/signal_distortion_analysis.py
+python src/representation_analysis.py
+python src/integrated_analysis.py
+python src/failure_case_analysis.py
+```
+
+The main experiment generates the ASR results first. The later analysis scripts read the saved outputs from `results/` and generate additional statistical summaries, signal-level analysis, representation-level analysis, integrated figures, and representative failure cases.
+
+### Additional / Development Scripts
+
 ### 1. Baseline ASR test
 
 ```bash
@@ -431,6 +482,39 @@ pip freeze > requirements-lock.txt
 
 ---
 
+## Core Project Scope Status
+
+The core project scope is now complete. The current implementation includes:
+
+- a fixed Wav2Vec2 ASR model;
+- paired WAV, MP3 and Opus evaluation;
+- multiple bitrate conditions covering robust, transition and degraded regions;
+- `test-clean` and `test-other` evaluation;
+- actual bitrate measurement;
+- WER and ΔWER analysis;
+- paired bootstrap confidence intervals;
+- substitution, deletion and insertion analysis;
+- signal-level spectral distortion and effective-bandwidth analysis;
+- Wav2Vec2 representation drift at early, middle and late layers;
+- an integrated signal → representation → recognition analysis;
+- representative individual failure cases.
+
+Any additional neural-codec experiment is treated as an extension rather than a requirement for the core project.
+
+## Project Contribution
+
+The main contribution of this project is not simply a comparison of MP3 and Opus recognition accuracy.
+
+Instead, the project investigates why Wav2Vec2 remains robust under lossy compression by linking three levels of analysis:
+
+1. **Signal level** — how compression changes the spectral characteristics of the speech signal;
+2. **Representation level** — how these changes propagate through early, middle and late Wav2Vec2 hidden representations;
+3. **Task level** — when these changes become large enough to produce measurable ASR degradation.
+
+The results suggest that substantial signal distortion can occur before recognition performance degrades strongly. Under more severe compression, representation drift increases, particularly in deeper layers, together with larger WER increases.
+
+This provides a more informative explanation of compression robustness than WER-only codec comparison.
+
 ## Next Steps
 
 - review the matched-bitrate codec comparison and speech-difficulty comparison;
@@ -440,3 +524,8 @@ pip freeze > requirements-lock.txt
 - prepare the final research report;
 - prepare the project demonstration video.
 
+A neural audio codec such as EnCodec may be considered as an optional extension after the MP3/Opus analysis is complete, primarily to test whether the observed relationship between signal distortion, representation drift and WER generalises to a different codec architecture.
+
+If included, EnCodec will not be treated as a separate codec-ranking experiment. It will be used only to test whether the signal → representation → WER relationship observed for MP3 and Opus also appears under a neural codec architecture.
+
+Because the standard 24 kHz mono EnCodec model operates at a different sample rate from LibriSpeech and Wav2Vec2, any EnCodec experiment will include an uncompressed 16 → 24 → 16 kHz resampling control. This prevents resampling effects from being incorrectly attributed to neural codec compression.

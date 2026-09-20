@@ -1,0 +1,112 @@
+Representative Compression Failure Cases
+==================================================
+
+Case 1: test-clean | MP3 16k
+Dataset index: 757
+Reference: HE NODS HIS CONSENT
+WAV prediction: HE NODS HIS CONSENT
+Compressed prediction: HE GNODS HIS CONCERT
+WAV WER: 0.00%
+Compressed WER: 50.00%
+ΔWER: 50.00 pp
+New errors: S=2, D=0, I=0
+--------------------------------------------------
+
+Case 2: test-clean | MP3 16k
+Dataset index: 4
+Reference: NUMBER TEN FRESH NELLY IS WAITING ON YOU GOOD NIGHT HUSBAND
+WAV prediction: NUMBER TEN FRESH NELLY IS WAITING ON YOU GOOD NIGHT HUSBAND
+Compressed prediction: NUMBERTEN FRESCH NELLI IS WAITING ON YOU GOOD NIGHT HUSBAND
+WAV WER: 0.00%
+Compressed WER: 36.36%
+ΔWER: 36.36 pp
+New errors: S=3, D=1, I=0
+--------------------------------------------------
+
+Case 3: test-clean | OPUS 8k
+Dataset index: 1248
+Reference: PHOENICIAN VERY GOOD
+WAV prediction: PHOENICIAN VERY GOOD
+Compressed prediction: PHENICIAN VERY GOOD
+WAV WER: 0.00%
+Compressed WER: 33.33%
+ΔWER: 33.33 pp
+New errors: S=1, D=0, I=0
+--------------------------------------------------
+
+Case 4: test-clean | OPUS 8k
+Dataset index: 1479
+Reference: WE ATE AT MANY MEN'S TABLES UNINVITED
+WAV prediction: WE ATE AT MANY MEN'S TABLES UNINVITED
+Compressed prediction: WE ATED MANY MEN'S TABLES UNINVITED
+WAV WER: 0.00%
+Compressed WER: 28.57%
+ΔWER: 28.57 pp
+New errors: S=1, D=1, I=0
+--------------------------------------------------
+
+Case 5: test-clean | OPUS 6k
+Dataset index: 453
+Reference: COTTON SHE PAUSED
+WAV prediction: COTTON SHE PAUSED
+Compressed prediction: CURTON SHE VASKED
+WAV WER: 0.00%
+Compressed WER: 66.67%
+ΔWER: 66.67 pp
+New errors: S=2, D=0, I=0
+--------------------------------------------------
+
+Case 6: test-clean | OPUS 6k
+Dataset index: 1265
+Reference: LOOK CLOSELY AT LIFE
+WAV prediction: LOOK CLOSELY AT LIFE
+Compressed prediction: LOOK CLOSELY AS LIGTS
+WAV WER: 0.00%
+Compressed WER: 50.00%
+ΔWER: 50.00 pp
+New errors: S=2, D=0, I=0
+--------------------------------------------------
+
+Case 7: test-other | OPUS 8k
+Dataset index: 1637
+Reference: NOT YEARS FOR SHE'S ONLY FIVE AND TWENTY
+WAV prediction: NOT YEARS FOR SHE'S ONLY FIVE AND TWENTY
+Compressed prediction: NOT EARS FARSE'S ALWAYS HAVE AND PLENTY
+WAV WER: 0.00%
+Compressed WER: 75.00%
+ΔWER: 75.00 pp
+New errors: S=5, D=1, I=0
+--------------------------------------------------
+
+Case 8: test-other | OPUS 8k
+Dataset index: 593
+Reference: DIRECTED FOR YOUR MASTER
+WAV prediction: DIRECTED FOR YOUR MASTER
+Compressed prediction: DIRECTED FOOMASTA
+WAV WER: 0.00%
+Compressed WER: 75.00%
+ΔWER: 75.00 pp
+New errors: S=1, D=2, I=0
+--------------------------------------------------
+
+Case 9: test-other | OPUS 6k
+Dataset index: 2021
+Reference: THIS MIGHT SEEM ONE OF THE MOST ACCESSIBLE OF PLEASURES BUT IN POINT OF FACT SHE HAD NOT FOUND IT SO
+WAV prediction: THIS MIGHT SEEM ONE OF THE MOST ACCESSIBLE OF PLEASURES BUT IN POINT OF FACT SHE HAD NOT FOUND IT SO
+Compressed prediction: THE PLANTING ON THE MEDEFESSIABLE TEASURES BUT ANTINTO TAT YE HAV NOT FOUND IT SAD
+WAV WER: 0.00%
+Compressed WER: 76.19%
+ΔWER: 76.19 pp
+New errors: S=10, D=6, I=0
+--------------------------------------------------
+
+Case 10: test-other | OPUS 6k
+Dataset index: 1717
+Reference: BUT ONE'S WORK IS THROWN IN FOR NOTHING
+WAV prediction: BUT ONE'S WORK IS THROWN IN FOR NOTHING
+Compressed prediction: THE ONE WAS IT SOMEN FOR NOTHING
+WAV WER: 0.00%
+Compressed WER: 75.00%
+ΔWER: 75.00 pp
+New errors: S=5, D=1, I=0
+--------------------------------------------------

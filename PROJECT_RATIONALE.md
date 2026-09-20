@@ -45,6 +45,46 @@ measurable WER degradation
 
 ---
 
+````md
+## Literature Grounding
+
+The project is grounded in three related research areas: self-supervised speech representation learning, perceptual audio coding, and robustness of automatic speech recognition to changes in the input domain.
+
+### Wav2Vec2 and Learned Speech Representations
+
+Wav2Vec2 learns representations directly from raw speech audio and uses a sequence of learned latent and contextual representations for downstream speech recognition. This motivates analysing not only final WER, but also how codec-induced changes propagate through different Wav2Vec2 layers.
+
+### Lossy Speech and Audio Coding
+
+MP3 and Opus provide two established but structurally different lossy audio coding approaches. Opus is particularly relevant to speech because it is designed to operate efficiently over a broad bitrate range, including low-bitrate speech conditions. This motivates extending the Opus experiment below 16 kbps in order to observe the transition from robust recognition to clear degradation.
+
+### Robustness and Representation Shift
+
+Prior work on Wav2Vec2 has shown that changes in input or domain conditions can affect downstream recognition performance. In this project, codec compression is treated as a controlled input-domain perturbation. The analysis therefore examines three linked levels: signal distortion, learned-representation drift, and recognition error.
+
+### Neural Codec Extension
+
+A neural codec such as EnCodec is considered only as an optional extension. Its purpose would not be to create a simple codec ranking, but to test whether the observed relationship between signal distortion, representation drift, and WER also appears under a substantially different compression architecture.
+
+### Literature Progression
+
+The literature review follows the development of the project from general foundations to the specific research question:
+
+1. **Wav2Vec2 and self-supervised speech representation learning** provide the basis for understanding the fixed ASR model and its internal representations.
+2. **MP3 and Opus codec literature and specifications** provide the technical background for bitrate selection and expected signal-level behaviour.
+3. **ASR robustness and domain-shift studies** motivate analysing whether recognition performance remains stable under controlled input degradation.
+4. **Representation-level analysis** motivates comparing hidden-layer similarity rather than relying only on final WER.
+5. **Neural audio codec research** is treated as an optional extension to test whether the observed signal → representation → task relationship generalises beyond conventional codecs.
+
+### Key References
+
+- Baevski et al., “wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations,” 2020.
+- Hsu et al., “Robust wav2vec 2.0: Analyzing Domain Shift in Self-Supervised Pre-Training,” 2021.
+- Valin, Vos and Terriberry, “Definition of the Opus Audio Codec,” RFC 6716, 2012.
+- Défossez et al., “High Fidelity Neural Audio Compression,” 2022.
+
+---
+
 ## 2. Why the Scope Was Limited to MP3 and Opus
 
 After the topic was selected, the next decision was which codecs to study.
@@ -89,6 +129,7 @@ The bitrate settings were selected to cover a wide range from moderate compressi
 - 16 kbps
 - 12 kbps
 - 8 kbps
+- 6 kbps
 
 An uncompressed WAV condition is used as the baseline.
 
