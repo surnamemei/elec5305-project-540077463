@@ -258,7 +258,7 @@ Core experiments complete — final analysis and reporting stage
 </div>
 
 <div class="hero-actions">
-<a class="button primary" href="ELEC5305%20Project%20Proposal%20v2.pdf">
+<a class="button primary" href="ELEC5305%20Project%20Proposal%20v3.pdf">
 View Proposal PDF
 </a>
 
@@ -505,33 +505,36 @@ in the repository results.
 alt="Integrated signal representation and recognition analysis">
 
 <p class="small">
-Integrated analysis linking log-spectral distortion, Wav2Vec2 representation drift,
-and WER across representative compression conditions.
+Log-spectral distance, retained bandwidth, standardised Layer 1 / Layer 12 drift and ΔWER
+(shaded: 95% bootstrap CI) against measured bitrate, for all MP3 and Opus conditions and
+both LibriSpeech subsets (500 paired utterances each).
 </p>
 </div>
 
 <div class="findings">
 
 <div class="finding">
-<strong>Signal distortion can appear before large WER changes</strong>
-Moderate compression can alter the acoustic signal while recognition remains close
-to the WAV baseline.
+<strong>Large signal distortion can leave WER unchanged</strong>
+MP3 24 kbps has a log-spectral distance of 9.2 dB and removes everything above 5.8 kHz,
+yet test-clean WER changes by only +0.02 pp.
 </div>
 
 <div class="finding">
-<strong>Early representations are more sensitive</strong>
-Layer 1 generally shows substantially larger codec-induced drift than Layers 6 and 12.
+<strong>Wav2Vec2 attenuates codec perturbations with depth</strong>
+Standardised drift is highest at the conv output or in Layers 1–3 and falls 2.7–4.4× by Layer 12
+on test-clean (1.5–2.7× on the harder test-other subset).
 </div>
 
 <div class="finding">
-<strong>Deeper representations remain more stable</strong>
-Under moderate compression, much of the perturbation visible in early layers is reduced
-in deeper Wav2Vec2 representations.
+<strong>Bandwidth marks the transition</strong>
+The largest WER jumps coincide with the codec low-pass cutoff entering the speech band:
+MP3 24/16 kbps (~5.8/5.6 kHz) and Opus 8/6 kbps, where libopus switches to narrowband (~4.6 kHz).
 </div>
 
 <div class="finding">
-<strong>Severe compression eventually affects deeper layers</strong>
-At aggressive low bitrates, deeper-layer drift increases together with larger WER changes.
+<strong>Late-layer drift tracks failure most closely</strong>
+Opus 8 and 6 kbps have the same cutoff and almost the same spectral distance, but WER
+degradation doubles; Layer 12 drift (0.086 vs 0.130) separates them.
 </div>
 
 </div>
@@ -547,15 +550,86 @@ At aggressive low bitrates, deeper-layer drift increases together with larger WE
 alt="Wav2Vec2 representation drift across layers">
 
 <p class="small">
-Mean representation drift for Layers 1, 6 and 12 across 100 fixed
-test-clean utterances.
+Mean standardised drift (1 − cosine similarity of per-dimension standardised hidden states)
+at the convolutional feature output and every transformer layer, 500 utterances per subset.
 </p>
 </div>
 
 <p>
-The results suggest that Codec-induced representation drift is progressively smaller in deeper Wav2Vec2 layers under moderate compression. 
-However, this robustness becomes weaker when compression is sufficiently severe.
+Raw cosine similarity is not comparable across Wav2Vec2 layers: in Layer 11, frames of two
+unrelated utterances already have a cosine similarity of about 0.94. Hidden states are therefore
+standardised per dimension before comparison, after which unrelated frames are close to
+orthogonal in every layer.
 </p>
+
+<p>
+With this correction, codec-induced drift is largest in Layers 1–3 and decreases steadily
+towards Layer 10–12. The attenuation is weaker on test-other and under the most severe
+compression, where the remaining late-layer drift is accompanied by large WER increases.
+</p>
+
+</section>
+
+<section class="section">
+
+<h2>Which Measurement Predicts ASR Failure?</h2>
+
+<div class="figure">
+<img src="results/figures/predictor_correlation_by_layer.png"
+alt="Correlation of each measurement with utterance-level WER change">
+
+<p class="small">
+Spearman correlation of each Wav2Vec2 layer's drift with utterance-level ΔWER, compared with
+log-spectral distance and bandwidth loss. Left: pooled over all conditions. Right: within a single
+codec condition (which utterances fail at a fixed bitrate). Shaded: 95% bootstrap CI.
+</p>
+</div>
+
+<div class="table-wrap">
+
+<table>
+
+<thead>
+<tr>
+<th>Subset</th>
+<th>Predictor</th>
+<th>Condition level (Pearson)</th>
+<th>Within condition (Spearman)</th>
+</tr>
+</thead>
+
+<tbody>
+
+<tr><td>test-clean</td><td>Log-spectral distance</td><td>0.75 [0.66, 0.81]</td><td>−0.02 [−0.06, +0.02]</td></tr>
+<tr><td>test-clean</td><td>Bandwidth loss</td><td>0.81 [0.74, 0.85]</td><td>−0.01 [−0.05, +0.04]</td></tr>
+<tr><td>test-clean</td><td><strong>Layer 12 drift</strong></td><td><strong>0.96 [0.91, 0.98]</strong></td><td><strong>0.09 [0.05, 0.13]</strong></td></tr>
+<tr><td>test-other</td><td>Log-spectral distance</td><td>0.79 [0.76, 0.81]</td><td>+0.03 [−0.03, +0.10]</td></tr>
+<tr><td>test-other</td><td>Bandwidth loss</td><td>0.85 [0.82, 0.87]</td><td>−0.01 [−0.06, +0.04]</td></tr>
+<tr><td>test-other</td><td><strong>Layer 12 drift</strong></td><td><strong>0.97 [0.96, 0.98]</strong></td><td><strong>0.23 [0.18, 0.27]</strong></td></tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+<p>
+Across conditions, late-layer drift tracks the size of the WER change more linearly than any
+signal-level measure (both rank the conditions similarly). Within a fixed codec condition, it is the only
+measure with a (modest) association with which utterances fail. Because
+Layer 12 lies directly below the CTC output layer, part of this relationship is expected; the
+more informative result is that signal-level distortion, which can be measured without running
+the recogniser, does not predict which utterances break.
+</p>
+
+<div class="figure">
+<img src="results/figures/predictor_condition_scatter.png"
+alt="Condition-level scatter of signal and representation measures against WER change">
+
+<p class="small">
+Condition-level ΔWER against log-spectral distance, bandwidth loss and Layer 1 / Layer 12 drift.
+</p>
+</div>
 
 </section>
 
@@ -568,14 +642,24 @@ However, this robustness becomes weaker when compression is sufficiently severe.
 alt="Frequency dependent distortion">
 
 <p class="small">
-Frequency-dependent distortion under MP3 and Opus compression.
+Frequency-dependent distortion D(f) for every MP3 and Opus condition (test-clean, log spectra
+clipped 80 dB below the reference peak).
 </p>
 </div>
 
 <p>
-Very low bitrate conditions show substantial modification of the acoustic signal
-and reduced retained bandwidth. However, the magnitude of signal distortion alone
-does not fully predict ASR failure.
+MP3 applies a hard low-pass filter (about 7.3 kHz at 32–128 kbps, 5.8 kHz at 24 kbps and 5.6 kHz
+at 16 kbps), while Opus keeps the full 8 kHz band down to 12 kbps and switches to narrowband
+coding (about 4.6 kHz) at 8 and 6 kbps. The magnitude of signal distortion alone does not
+predict ASR failure: Opus 8 and 6 kbps are almost identical at the signal level but differ
+substantially in WER.
+</p>
+
+<p class="small">
+Methodological note: an earlier version computed log spectra as 20·log10(|X| + 10⁻⁸) without a
+floor. Bins that MP3 sets to exactly zero then dominated the average, making MP3 128 kbps appear
+more distorted than Opus 16 kbps. The earlier 95%-energy bandwidth measure also did not detect
+codec low-pass filtering. Both were corrected; see the README for details.
 </p>
 
 </section>
@@ -676,37 +760,37 @@ Because the mono EnCodec model operates at 24 kHz, an uncompressed
 
 <tr>
 <td>WAV</td>
-<td>4.22%</td>
+<td>3.17%</td>
 <td>0.00 pp</td>
 <td>0.000</td>
 </tr>
 
 <tr>
 <td>Resampling control</td>
-<td>4.28%</td>
-<td>+0.06 pp</td>
-<td>0.001</td>
+<td>3.19%</td>
+<td>+0.02 pp</td>
+<td>0.002</td>
 </tr>
 
 <tr>
 <td>EnCodec 24k</td>
-<td>4.28%</td>
-<td>+0.06 pp</td>
-<td>0.016</td>
+<td>3.28%</td>
+<td>+0.12 pp</td>
+<td>0.038</td>
 </tr>
 
 <tr>
 <td>EnCodec 6k</td>
-<td>5.17%</td>
-<td>+0.94 pp</td>
-<td>0.029</td>
+<td>3.77%</td>
+<td>+0.60 pp</td>
+<td>0.062</td>
 </tr>
 
 <tr>
 <td><strong>EnCodec 1.5k</strong></td>
-<td><strong>13.06%</strong></td>
-<td><strong>+8.83 pp</strong></td>
-<td><strong>0.110</strong></td>
+<td><strong>9.95%</strong></td>
+<td><strong>+6.79 pp</strong></td>
+<td><strong>0.198</strong></td>
 </tr>
 
 </tbody>
@@ -725,6 +809,14 @@ severe EnCodec compression is associated with larger representation drift and WE
 </p>
 </div>
 
+<p>
+The extension uses the same 500 test-clean utterances as the main experiment. EnCodec 24 kbps
+has a larger log-spectral distance (7.0 dB) than Opus 16 kbps (5.4 dB) yet almost no WER change,
+and its Layer 12 drift (0.038) is close to that of MP3 24 kbps (0.041). The drift–WER
+relationship therefore carries over to a neural codec, while the spectral-distortion–WER
+relationship does not.
+</p>
+
 </section>
 
 <section class="section">
@@ -733,14 +825,15 @@ severe EnCodec compression is associated with larger representation drift and WE
 
 <div class="callout">
 
-The results suggest that measurable codec-induced signal distortion can occur
-before recognition performance degrades strongly.
+Codec-induced signal distortion can be large, up to about 9 dB log-spectral distance with a
+5.8 kHz low-pass cutoff, before recognition performance changes measurably.
 
 <br><br>
 
-Wav2Vec2 appears to suppress part of this perturbation through its learned
-representations, particularly in deeper layers. Under sufficiently severe compression,
-deeper representation drift also increases and is accompanied by substantially higher WER.
+Wav2Vec2 attenuates much of this perturbation between its early and final layers. Recognition
+begins to fail when the codec cutoff moves into the speech band and the perturbation that
+survives to the final layers grows. Late-layer drift, not signal distortion, tracks when recognition fails most
+closely; within a condition this association is modest and not causal.
 
 </div>
 
@@ -806,9 +899,57 @@ Proc. IEEE ICASSP, 2015.
 </li>
 
 <li>
-A. Défossez et al.,
+A. Défossez, J. Copet, G. Synnaeve, and Y. Adi,
 “High Fidelity Neural Audio Compression,”
-2022.
+Transactions on Machine Learning Research, 2023.
+</li>
+
+<li>
+A. Pasad, J.-C. Chou, and K. Livescu, “Layer-wise Analysis of a Self-supervised Speech Representation Model,” Proc. IEEE ASRU, 2021.
+</li>
+
+<li>
+K. Brandenburg, “MP3 and AAC Explained,” AES 17th Int. Conf. on High-Quality Audio Coding, 1999.
+</li>
+
+<li>
+L. Besacier, C. Bergamini, D. Vaufreydaz, and E. Castelli, “The Effect of Speech and Audio Compression on Speech Recognition Performance,” IEEE Workshop on Multimedia Signal Processing, 2001.
+</li>
+
+<li>
+H.-G. Hirsch and D. Pearce, “The AURORA Experimental Framework for the Performance Evaluation of Speech Recognition Systems under Noisy Conditions,” ISCA ITRW ASR2000, 2000.
+</li>
+
+<li>
+A. Radford et al., “Robust Speech Recognition via Large-Scale Weak Supervision,” Proc. ICML, 2023.
+</li>
+
+<li>
+N. Zeghidour et al., “SoundStream: An End-to-End Neural Audio Codec,” IEEE/ACM Trans. Audio, Speech, and Language Processing, 2022.
+</li>
+
+<li>
+H. Wu et al., “Codec-SUPERB: An In-Depth Analysis of Sound Codec Models,” Findings of ACL, 2024.
+</li>
+
+<li>
+W. Timkey and M. van Schijndel, “All Bark and No Bite: Rogue Dimensions in Transformer Language Models Obscure Representational Quality,” Proc. EMNLP, 2021.
+</li>
+
+<li>
+K. Ethayarajh, “How Contextual are Contextualized Word Representations?,” Proc. EMNLP-IJCNLP, 2019.
+</li>
+
+<li>
+S. Kornblith, M. Norouzi, H. Lee, and G. Hinton, “Similarity of Neural Network Representations Revisited,” Proc. ICML, 2019.
+</li>
+
+<li>
+R. M. Gray, A. Buzo, A. H. Gray, and Y. Matsuyama, “Distortion Measures for Speech Processing,” IEEE Trans. Acoustics, Speech, and Signal Processing, 1980.
+</li>
+
+<li>
+M. Bisani and H. Ney, “Bootstrap Estimates for Confidence Intervals in ASR Performance Evaluation,” Proc. IEEE ICASSP, 2004.
 </li>
 
 </ol>
@@ -820,9 +961,8 @@ A. Défossez et al.,
 <h2>Next Steps</h2>
 
 <ul>
-<li>finalise literature grounding and related-work discussion</li>
-<li>select the strongest figures for the final report</li>
-<li>document limitations and interpretation carefully</li>
+<li>write the final report around the predictor analysis and corrected signal / representation results</li>
+<li>update the failure-case discussion using utterances with high Layer 12 drift</li>
 <li>prepare the final research report</li>
 <li>prepare the project demonstration video</li>
 </ul>

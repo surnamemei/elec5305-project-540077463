@@ -1,3 +1,4 @@
+import random
 from pathlib import Path
 from typing import cast
 
@@ -16,7 +17,8 @@ from torchaudio.models import Wav2Vec2Model
 # Configuration
 # ---------------------------------------------------------
 
-NUM_SAMPLES = 100
+# Same utterances as run_all_experiments.py (same seed and sample size)
+NUM_SAMPLES = 500
 RANDOM_SEED = 5305
 
 LIBRISPEECH_ROOT = "./data"
@@ -26,6 +28,9 @@ SOURCE_SAMPLE_RATE = 16000
 ENCODEC_SAMPLE_RATE = 24000
 
 TARGET_BANDWIDTHS = [24.0, 6.0, 1.5]
+
+# Log spectra are clipped at (reference peak - DYNAMIC_RANGE_DB)
+DYNAMIC_RANGE_DB = 80.0
 
 LAYERS = {
     1: 0,
@@ -39,6 +44,10 @@ FIGURES_DIR = RESULTS_DIR / "figures"
 DETAIL_FILE = RESULTS_DIR / "encodec_extension_results.csv"
 SUMMARY_FILE = RESULTS_DIR / "encodec_extension_summary.csv"
 FIGURE_FILE = FIGURES_DIR / "encodec_extension.png"
+
+# Per-layer standardisation statistics written by representation_analysis.py,
+# so that EnCodec drift is measured exactly like MP3 / Opus drift
+STANDARDISATION_FILE = RESULTS_DIR / "representation_standardisation.pt"
 
 
 # ---------------------------------------------------------
@@ -138,7 +147,14 @@ def match_length(
 def spectral_distortion(
     reference: Tensor,
     processed: Tensor,
-) -> float:
+) -> tuple[float, float]:
+    """
+    Log-spectral distortion with the same definition as
+    signal_distortion_analysis.py: log spectra are clipped at
+    DYNAMIC_RANGE_DB below the reference peak.
+
+    Returns (mean squared difference in dB^2, log-spectral distance in dB).
+    """
     reference, processed = match_length(
         reference,
         processed,
@@ -165,18 +181,27 @@ def spectral_distortion(
     )
 
     ref_log = 20.0 * torch.log10(
-        ref_stft.abs() + 1e-8
+        ref_stft.abs() + 1e-12
     )
 
     proc_log = 20.0 * torch.log10(
-        proc_stft.abs() + 1e-8
+        proc_stft.abs() + 1e-12
     )
 
-    distortion = torch.mean(
-        (ref_log - proc_log) ** 2
+    floor = ref_log.max() - DYNAMIC_RANGE_DB
+
+    difference = (
+        torch.clamp(proc_log, min=floor)
+        - torch.clamp(ref_log, min=floor)
     )
 
-    return float(distortion.item())
+    dspec = torch.mean(difference ** 2)
+
+    lsd_db = torch.mean(
+        torch.sqrt(torch.mean(difference ** 2, dim=0))
+    )
+
+    return float(dspec.item()), float(lsd_db.item())
 
 
 def extract_hidden_layers(
@@ -204,7 +229,17 @@ def extract_hidden_layers(
 def representation_drift(
     reference_features: Tensor,
     processed_features: Tensor,
+    standardisation: tuple[Tensor, Tensor] | None = None,
 ) -> float:
+    """
+    1 - mean frame-wise cosine similarity. If standardisation (mean, std)
+    is given, every hidden dimension is standardised first.
+    """
+    if standardisation is not None:
+        mean, std = standardisation
+        reference_features = (reference_features - mean) / std
+        processed_features = (processed_features - mean) / std
+
     time_length = min(
         reference_features.shape[1],
         processed_features.shape[1],
@@ -293,6 +328,8 @@ def main() -> None:
 
     print(f"Using device: {device}")
 
+    standardisation = torch.load(STANDARDISATION_FILE)
+
     # -----------------------------------------------------
     # Load Wav2Vec2
     # -----------------------------------------------------
@@ -330,13 +367,12 @@ def main() -> None:
         download=False,
     )
 
-    generator = torch.Generator()
-    generator.manual_seed(RANDOM_SEED)
+    random.seed(RANDOM_SEED)
 
-    indices = torch.randperm(
-        len(dataset),
-        generator=generator,
-    )[:NUM_SAMPLES].tolist()
+    indices = random.sample(
+        range(len(dataset)),
+        k=min(NUM_SAMPLES, len(dataset)),
+    )
 
     conditions: list[tuple[str, float | None]] = [
         ("wav", None),
@@ -428,14 +464,17 @@ def main() -> None:
 
             if condition_name == "wav":
                 dspec = 0.0
+                lsd_db = 0.0
 
                 layer_drifts = {
                     layer: 0.0
                     for layer in LAYERS
                 }
 
+                raw_layer_drifts = dict(layer_drifts)
+
             else:
-                dspec = spectral_distortion(
+                dspec, lsd_db = spectral_distortion(
                     reference_aligned,
                     processed_aligned,
                 )
@@ -447,6 +486,15 @@ def main() -> None:
                 )
 
                 layer_drifts = {
+                    layer: representation_drift(
+                        reference_features[layer],
+                        processed_features[layer],
+                        standardisation[f"layer_{layer}"],
+                    )
+                    for layer in LAYERS
+                }
+
+                raw_layer_drifts = {
                     layer: representation_drift(
                         reference_features[layer],
                         processed_features[layer],
@@ -466,9 +514,13 @@ def main() -> None:
                     "prediction": prediction,
                     "wer": sample_wer,
                     "spectral_distortion": dspec,
+                    "lsd_db": lsd_db,
                     "layer_1_drift": layer_drifts[1],
                     "layer_6_drift": layer_drifts[6],
                     "layer_12_drift": layer_drifts[12],
+                    "layer_1_raw_drift": raw_layer_drifts[1],
+                    "layer_6_raw_drift": raw_layer_drifts[6],
+                    "layer_12_raw_drift": raw_layer_drifts[12],
                 }
             )
 
@@ -511,6 +563,9 @@ def main() -> None:
                 "mean_spectral_distortion": group[
                     "spectral_distortion"
                 ].mean(),
+                "mean_lsd_db": group[
+                    "lsd_db"
+                ].mean(),
                 "mean_layer_1_drift": group[
                     "layer_1_drift"
                 ].mean(),
@@ -519,6 +574,9 @@ def main() -> None:
                 ].mean(),
                 "mean_layer_12_drift": group[
                     "layer_12_drift"
+                ].mean(),
+                "mean_layer_12_raw_drift": group[
+                    "layer_12_raw_drift"
                 ].mean(),
             }
         )
@@ -574,6 +632,7 @@ def main() -> None:
                 "wer_percent",
                 "delta_wer_percentage_points",
                 "mean_spectral_distortion",
+                "mean_lsd_db",
                 "mean_layer_1_drift",
                 "mean_layer_6_drift",
                 "mean_layer_12_drift",
@@ -625,13 +684,13 @@ def main() -> None:
     axes[0].plot(
         x,
         summary_df[
-            "mean_spectral_distortion"
+            "mean_lsd_db"
         ],
         marker="o",
     )
 
     axes[0].set_ylabel(
-        "Log-spectral distortion"
+        "Log-spectral distance (dB)"
     )
 
     axes[0].set_title(
@@ -672,7 +731,7 @@ def main() -> None:
     )
 
     axes[1].set_ylabel(
-        "Representation drift"
+        "Standardised representation drift"
     )
 
     axes[1].legend()

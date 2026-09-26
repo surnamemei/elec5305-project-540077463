@@ -1,15 +1,42 @@
+"""
+Signal-level codec distortion analysis (feedback points 15, 16, 17 and 23).
+
+For every selected utterance and codec condition the script:
+
+1. encodes and decodes the utterance with FFmpeg;
+2. aligns the decoded signal to the WAV reference (cross-correlation);
+3. measures log-spectral distortion against the WAV reference;
+4. measures the retained bandwidth of the codec output.
+
+Log-spectral floor
+------------------
+Log-magnitude spectra are clipped to a fixed dynamic range below the
+reference spectrogram peak (DYNAMIC_RANGE_DB). Without this floor, bins that
+a codec sets to exactly zero (common for MP3) are mapped to 20*log10(eps),
+which is a huge negative number, and those few bins dominate the average.
+The floor makes the metric measure audible / physically meaningful spectral
+change rather than the value of eps.
+
+Retained bandwidth
+------------------
+The long-term power spectrum of the decoded signal is divided by that of the
+reference. The retained bandwidth is the highest frequency at which the codec
+still keeps power within BANDWIDTH_DROP_DB of the reference. This detects the
+low-pass cutoff that codecs apply at low bitrates, which a cumulative-energy
+roll-off measure does not (speech energy is concentrated below ~3 kHz, so a
+95%-energy roll-off barely moves when 4-8 kHz content is removed).
+"""
+
 import os
+import random
 import subprocess
 import tempfile
-import random
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
 import torch
 import torchaudio
-
 from tqdm import tqdm
 
 
@@ -18,21 +45,31 @@ from tqdm import tqdm
 # ==================================================
 
 DATA_ROOT = "data"
-DATASET_NAME = "test-clean"
+DATASET_NAMES = ["test-clean", "test-other"]
 
-NUM_SAMPLES = 100
+# Same utterances as run_all_experiments.py (same seed and sample size)
+NUM_SAMPLES = 500
 RANDOM_SEED = 5305
 
-# STFT settings
+# STFT settings (25 ms window, 10 ms hop at 16 kHz)
 N_FFT = 512
 HOP_LENGTH = 160
 WIN_LENGTH = 400
 
-EPS = 1e-8
+# Only used to avoid log10(0); the dynamic-range floor below does the work
+LOG_EPS = 1e-12
 
-# Effective bandwidth definition:
-# frequency containing 95% of spectral energy
-BANDWIDTH_ENERGY_RATIO = 0.95
+# Log spectra are clipped at (reference peak - DYNAMIC_RANGE_DB)
+DYNAMIC_RANGE_DB = 80.0
+
+# Retained bandwidth: highest frequency where codec power is within
+# BANDWIDTH_DROP_DB of the reference power
+BANDWIDTH_DROP_DB = 20.0
+
+# Band used for the high-frequency power-loss measure
+HF_BAND_HZ = (4000.0, 8000.0)
+
+MAX_SHIFT_SAMPLES = 4000
 
 
 # ==================================================
@@ -40,41 +77,14 @@ BANDWIDTH_ENERGY_RATIO = 0.95
 # ==================================================
 
 RESULTS_DIR = "results"
+DETAIL_OUTPUT_PATH = os.path.join(RESULTS_DIR, "signal_distortion_results.csv")
+SUMMARY_OUTPUT_PATH = os.path.join(RESULTS_DIR, "signal_distortion_summary.csv")
+FREQ_OUTPUT_DIR = os.path.join(RESULTS_DIR, "frequency_distortion")
+FIGURE_OUTPUT_DIR = os.path.join(RESULTS_DIR, "figures")
 
-DETAIL_OUTPUT_PATH = os.path.join(
-    RESULTS_DIR,
-    "signal_distortion_results.csv"
-)
-
-SUMMARY_OUTPUT_PATH = os.path.join(
-    RESULTS_DIR,
-    "signal_distortion_summary.csv"
-)
-
-FREQ_OUTPUT_DIR = os.path.join(
-    RESULTS_DIR,
-    "frequency_distortion"
-)
-
-FIGURE_OUTPUT_DIR = os.path.join(
-    RESULTS_DIR,
-    "figures"
-)
-
-os.makedirs(
-    RESULTS_DIR,
-    exist_ok=True
-)
-
-os.makedirs(
-    FREQ_OUTPUT_DIR,
-    exist_ok=True
-)
-
-os.makedirs(
-    FIGURE_OUTPUT_DIR,
-    exist_ok=True
-)
+os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(FREQ_OUTPUT_DIR, exist_ok=True)
+os.makedirs(FIGURE_OUTPUT_DIR, exist_ok=True)
 
 
 # ==================================================
@@ -82,650 +92,227 @@ os.makedirs(
 # ==================================================
 
 CONDITIONS = [
-
-    # MP3
-    {
-        "codec": "mp3",
-        "bitrate": "128k"
-    },
-    {
-        "codec": "mp3",
-        "bitrate": "64k"
-    },
-    {
-        "codec": "mp3",
-        "bitrate": "32k"
-    },
-    {
-        "codec": "mp3",
-        "bitrate": "24k"
-    },
-    {
-        "codec": "mp3",
-        "bitrate": "16k"
-    },
-
-    # Opus
-    {
-        "codec": "opus",
-        "bitrate": "64k"
-    },
-    {
-        "codec": "opus",
-        "bitrate": "32k"
-    },
-    {
-        "codec": "opus",
-        "bitrate": "16k"
-    },
-    {
-        "codec": "opus",
-        "bitrate": "12k"
-    },
-    {
-        "codec": "opus",
-        "bitrate": "8k"
-    },
-    {
-        "codec": "opus",
-        "bitrate": "6k"
-    },
+    {"codec": "mp3", "bitrate": "128k"},
+    {"codec": "mp3", "bitrate": "64k"},
+    {"codec": "mp3", "bitrate": "32k"},
+    {"codec": "mp3", "bitrate": "24k"},
+    {"codec": "mp3", "bitrate": "16k"},
+    {"codec": "opus", "bitrate": "64k"},
+    {"codec": "opus", "bitrate": "32k"},
+    {"codec": "opus", "bitrate": "16k"},
+    {"codec": "opus", "bitrate": "12k"},
+    {"codec": "opus", "bitrate": "8k"},
+    {"codec": "opus", "bitrate": "6k"},
 ]
 
+CODEC_COLOURS = {"mp3": "#2a78d6", "opus": "#eb6834"}
+
 
 # ==================================================
-# Audio compression
+# Encode + decode
 # ==================================================
 
-def compress_audio(
-    waveform,
-    sample_rate,
-    codec,
-    bitrate
-):
-    """
-    Encode the source waveform using FFmpeg and
-    decode it back to a waveform.
+def compress_audio(waveform, sample_rate, codec, bitrate):
+    """Encode with FFmpeg and decode back to a waveform."""
 
-    Returns:
-        compressed_waveform
-        compressed_sample_rate
-    """
+    encoders = {"mp3": "libmp3lame", "opus": "libopus"}
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        input_path = os.path.join(temp_dir, "input.wav")
+        output_path = os.path.join(temp_dir, f"compressed.{codec}")
 
-        input_path = os.path.join(
-            temp_dir,
-            "input.wav"
-        )
+        torchaudio.save(input_path, waveform, sample_rate)
 
-        torchaudio.save(
-            input_path,
-            waveform,
-            sample_rate
-        )
+        command = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", input_path,
+            "-codec:a", encoders[codec],
+            "-b:a", bitrate,
+            output_path,
+        ]
+        subprocess.run(command, check=True)
 
-        # ------------------------------------------
-        # MP3
-        # ------------------------------------------
+        compressed_waveform, compressed_sr = torchaudio.load(output_path)
 
-        if codec == "mp3":
-
-            output_path = os.path.join(
-                temp_dir,
-                "compressed.mp3"
-            )
-
-            command = [
-                "ffmpeg",
-                "-y",
-                "-loglevel",
-                "error",
-                "-i",
-                input_path,
-                "-codec:a",
-                "libmp3lame",
-                "-b:a",
-                bitrate,
-                output_path,
-            ]
-
-        # ------------------------------------------
-        # Opus
-        # ------------------------------------------
-
-        elif codec == "opus":
-
-            output_path = os.path.join(
-                temp_dir,
-                "compressed.opus"
-            )
-
-            command = [
-                "ffmpeg",
-                "-y",
-                "-loglevel",
-                "error",
-                "-i",
-                input_path,
-                "-codec:a",
-                "libopus",
-                "-b:a",
-                bitrate,
-                output_path,
-            ]
-
-        else:
-            raise ValueError(
-                f"Unsupported codec: {codec}"
-            )
-
-        subprocess.run(
-            command,
-            check=True
-        )
-
-        compressed_waveform, compressed_sr = (
-            torchaudio.load(
-                output_path
-            )
-        )
-
-    return (
-        compressed_waveform,
-        compressed_sr
-    )
+    return compressed_waveform, int(compressed_sr)
 
 
 # ==================================================
-# Basic waveform alignment
+# Alignment (feedback point 23)
 # ==================================================
 
-def align_waveforms(
-    reference: torch.Tensor,
-    processed: torch.Tensor,
-    max_shift_samples: int = 4000
-) -> tuple[torch.Tensor, torch.Tensor, int]:
+def align_waveforms(reference, processed, max_shift_samples=MAX_SHIFT_SAMPLES):
     """
-    Align processed audio to reference using normalized
-    cross-correlation over a limited lag range.
+    Align processed audio to reference using normalised cross-correlation
+    over a limited lag range. The correlation for every lag is computed at
+    once with an FFT; the normalisation uses the energy of the overlapping
+    segments, so the score is identical to the direct sliding computation.
 
-    Returns:
-        aligned_reference
-        aligned_processed
-        estimated_delay_samples
-
-    Positive delay means the processed signal is delayed
-    relative to the reference.
+    Positive delay means the processed signal is delayed relative to the
+    reference.
     """
 
-    # Convert to mono
-    if reference.shape[0] > 1:
-        reference = reference.mean(
-            dim=0,
-            keepdim=True
-        )
+    ref = reference.mean(dim=0).cpu().double().numpy()
+    proc = processed.mean(dim=0).cpu().double().numpy()
 
-    if processed.shape[0] > 1:
-        processed = processed.mean(
-            dim=0,
-            keepdim=True
-        )
+    n_ref = len(ref)
+    n_proc = len(proc)
+    max_shift = min(max_shift_samples, n_ref - 1, n_proc - 1)
 
-    ref = reference.squeeze(0)
-    proc = processed.squeeze(0)
-
-    # Use CPU for correlation
-    ref = ref.cpu()
-    proc = proc.cpu()
-
-    # Limit search range
-    max_shift_samples = min(
-        max_shift_samples,
-        len(ref) - 1,
-        len(proc) - 1
+    n_fft = 1 << int(np.ceil(np.log2(n_ref + n_proc - 1)))
+    correlation = np.fft.irfft(
+        np.fft.rfft(proc, n_fft) * np.conj(np.fft.rfft(ref, n_fft)),
+        n_fft,
     )
+
+    ref_energy = np.concatenate([[0.0], np.cumsum(ref ** 2)])
+    proc_energy = np.concatenate([[0.0], np.cumsum(proc ** 2)])
 
     best_lag = 0
-    best_score = -1.0
+    best_score = -np.inf
 
-    for lag in range(
-        -max_shift_samples,
-        max_shift_samples + 1
-    ):
-
+    for lag in range(-max_shift, max_shift + 1):
         if lag >= 0:
-            ref_segment = ref[
-                :min(
-                    len(ref),
-                    len(proc) - lag
-                )
-            ]
-
-            proc_segment = proc[
-                lag:
-                lag + len(ref_segment)
-            ]
-
+            length = min(n_ref, n_proc - lag)
+            dot = correlation[lag]
+            energy = ref_energy[length] * (
+                proc_energy[lag + length] - proc_energy[lag]
+            )
         else:
             shift = -lag
-
-            proc_segment = proc[
-                :min(
-                    len(proc),
-                    len(ref) - shift
-                )
-            ]
-
-            ref_segment = ref[
-                shift:
-                shift + len(proc_segment)
-            ]
-
-        if len(ref_segment) < 100:
-            continue
-
-        denominator = (
-            torch.linalg.vector_norm(ref_segment)
-            *
-            torch.linalg.vector_norm(proc_segment)
-        )
-
-        if float(denominator.item()) == 0.0:
-            continue
-
-        score = (
-            torch.dot(
-                ref_segment,
-                proc_segment
+            length = min(n_proc, n_ref - shift)
+            dot = correlation[n_fft + lag]
+            energy = proc_energy[length] * (
+                ref_energy[shift + length] - ref_energy[shift]
             )
-            /
-            denominator
-        )
 
-        score_value = float(
-            score.item()
-        )
+        if length < 100 or energy <= 0.0:
+            continue
 
-        if score_value > best_score:
-            best_score = score_value
+        score = dot / np.sqrt(energy)
+        if score > best_score:
+            best_score = score
             best_lag = lag
 
-    # Apply estimated lag
+    ref_t = reference.mean(dim=0)
+    proc_t = processed.mean(dim=0)
+
     if best_lag >= 0:
-
-        aligned_processed = proc[
-            best_lag:
-        ]
-
-        aligned_reference = ref[
-            :len(aligned_processed)
-        ]
-
+        aligned_processed = proc_t[best_lag:]
+        aligned_reference = ref_t
     else:
+        aligned_reference = ref_t[-best_lag:]
+        aligned_processed = proc_t
 
-        shift = -best_lag
-
-        aligned_reference = ref[
-            shift:
-        ]
-
-        aligned_processed = proc[
-            :len(aligned_reference)
-        ]
-
-    # Final equal-length trim
-    min_length = min(
-        len(aligned_reference),
-        len(aligned_processed)
-    )
-
-    aligned_reference = aligned_reference[
-        :min_length
-    ].unsqueeze(0)
-
-    aligned_processed = aligned_processed[
-        :min_length
-    ].unsqueeze(0)
+    length = min(len(aligned_reference), len(aligned_processed))
 
     return (
-        aligned_reference,
-        aligned_processed,
-        best_lag
+        aligned_reference[:length].unsqueeze(0),
+        aligned_processed[:length].unsqueeze(0),
+        best_lag,
     )
 
 
 # ==================================================
-# Log-magnitude spectrogram
+# Spectra
 # ==================================================
 
-def log_spectrogram(
-    waveform
-):
-    """
-    Calculate STFT log-magnitude representation.
-    """
-
-    # Convert to mono if necessary
-    if waveform.shape[0] > 1:
-
-        waveform = waveform.mean(
-            dim=0,
-            keepdim=True
-        )
-
-    window = torch.hann_window(
-        WIN_LENGTH
-    )
-
+def magnitude_spectrogram(waveform):
+    window = torch.hann_window(WIN_LENGTH)
     stft = torch.stft(
         waveform.squeeze(0),
         n_fft=N_FFT,
         hop_length=HOP_LENGTH,
         win_length=WIN_LENGTH,
         window=window,
-        return_complex=True
+        return_complex=True,
     )
-
-    magnitude = torch.abs(
-        stft
-    )
-
-    log_mag = (
-        20.0
-        * torch.log10(
-            magnitude + EPS
-        )
-    )
-
-    return log_mag
+    return torch.abs(stft)
 
 
-# ==================================================
-# Spectral distortion
-# Feedback points 15 and 16
-# ==================================================
-
-def spectral_distortion(
-    reference,
-    processed,
-    sample_rate
-):
+def spectral_distortion(reference_mag, processed_mag):
     """
     Returns:
-
-    Dspec:
-        overall mean squared log-spectral distortion
-
-    frequencies:
-        STFT frequency bins
-
-    D(f):
-        mean absolute log-spectral difference
-        at each frequency bin
+        dspec:  mean squared log-spectral difference (dB^2), feedback point 15
+        lsd_db: log-spectral distance, RMS over frequency then mean over
+                frames (dB)
+        dfrequency: mean absolute log-spectral difference per frequency
+                bin (dB), feedback point 16
     """
 
-    ref_log = log_spectrogram(
-        reference
-    )
+    ref_log = 20.0 * torch.log10(reference_mag + LOG_EPS)
+    proc_log = 20.0 * torch.log10(processed_mag + LOG_EPS)
 
-    proc_log = log_spectrogram(
-        processed
-    )
+    floor = ref_log.max() - DYNAMIC_RANGE_DB
+    ref_log = torch.clamp(ref_log, min=floor)
+    proc_log = torch.clamp(proc_log, min=floor)
 
-    # Make frame counts equal
-    min_frames = min(
-        ref_log.shape[-1],
-        proc_log.shape[-1]
-    )
+    difference = proc_log - ref_log
 
-    ref_log = ref_log[
-        :,
-        :min_frames
-    ]
+    dspec = torch.mean(difference ** 2)
+    lsd_db = torch.mean(torch.sqrt(torch.mean(difference ** 2, dim=0)))
+    dfrequency = torch.mean(torch.abs(difference), dim=1)
 
-    proc_log = proc_log[
-        :,
-        :min_frames
-    ]
-
-    difference = (
-        proc_log
-        -
-        ref_log
-    )
-
-    # ----------------------------------------------
-    # Feedback point 15:
-    # overall spectral distortion
-    # ----------------------------------------------
-
-    dspec = torch.mean(
-        difference ** 2
-    )
-
-    # ----------------------------------------------
-    # Feedback point 16:
-    # distortion as a function of frequency
-    # ----------------------------------------------
-
-    dfrequency = torch.mean(
-        torch.abs(
-            difference
-        ),
-        dim=1
-    )
-
-    frequencies = torch.linspace(
-        0,
-        sample_rate / 2,
-        ref_log.shape[0]
-    )
-
-    return (
-        float(
-            dspec.item()
-        ),
-        frequencies.cpu().numpy(),
-        dfrequency.cpu().numpy()
-    )
+    return float(dspec), float(lsd_db), dfrequency.numpy()
 
 
-# ==================================================
-# Effective bandwidth
-# Feedback point 17
-# ==================================================
-
-def effective_bandwidth(
-    waveform,
-    sample_rate,
-    energy_ratio=BANDWIDTH_ENERGY_RATIO
-):
+def bandwidth_measures(reference_mag, processed_mag, frequencies):
     """
-    Effective bandwidth is defined as the frequency
-    below which the specified fraction of total
-    spectral energy is contained.
-
-    Default:
-        95% spectral energy
+    Returns:
+        retained_bandwidth_hz: highest frequency where the codec keeps
+            long-term power within BANDWIDTH_DROP_DB of the reference
+            (feedback point 17)
+        hf_power_change_db: codec / reference power in HF_BAND_HZ (dB)
     """
 
-    if waveform.shape[0] > 1:
+    ref_power = torch.mean(reference_mag ** 2, dim=1).double()
+    proc_power = torch.mean(processed_mag ** 2, dim=1).double()
 
-        waveform = waveform.mean(
-            dim=0,
-            keepdim=True
-        )
-
-    window = torch.hann_window(
-        WIN_LENGTH
+    ratio_db = 10.0 * torch.log10(
+        (proc_power + LOG_EPS) / (ref_power + LOG_EPS)
     )
 
-    stft = torch.stft(
-        waveform.squeeze(0),
-        n_fft=N_FFT,
-        hop_length=HOP_LENGTH,
-        win_length=WIN_LENGTH,
-        window=window,
-        return_complex=True
-    )
-
-    power = (
-        torch.abs(stft)
-        ** 2
-    )
-
-    # Average energy across time
-    mean_power = torch.mean(
-        power,
-        dim=1
-    )
-
-    cumulative_energy = torch.cumsum(
-        mean_power,
-        dim=0
-    )
-
-    total_energy = (
-        cumulative_energy[-1]
-    )
-
-    if float(total_energy.item()) <= 0:
-
-        return 0.0
-
-    normalized_energy = (
-        cumulative_energy
-        /
-        total_energy
-    )
-
-    indices = torch.where(
-        normalized_energy
-        >=
-        energy_ratio
-    )[0]
-
-    if len(indices) == 0:
-
-        index = (
-            len(mean_power)
-            - 1
-        )
-
+    retained = torch.where(ratio_db > -BANDWIDTH_DROP_DB)[0]
+    if len(retained) == 0:
+        retained_bandwidth_hz = 0.0
     else:
+        retained_bandwidth_hz = float(frequencies[int(retained[-1])])
 
-        index = int(
-            indices[0].item()
-        )
-
-    frequencies = torch.linspace(
-        0,
-        sample_rate / 2,
-        len(mean_power)
+    band = (frequencies >= HF_BAND_HZ[0]) & (frequencies <= HF_BAND_HZ[1])
+    band = torch.from_numpy(band)
+    hf_power_change_db = 10.0 * torch.log10(
+        (proc_power[band].sum() + LOG_EPS) / (ref_power[band].sum() + LOG_EPS)
     )
 
-    bandwidth_hz = frequencies[
-        index
-    ]
-
-    return float(
-        bandwidth_hz.item()
-    )
-
-
-# ==================================================
-# Load LibriSpeech
-# ==================================================
-
-print(
-    "\nLoading LibriSpeech..."
-)
-
-dataset = (
-    torchaudio.datasets.LIBRISPEECH(
-        root=DATA_ROOT,
-        url=DATASET_NAME,
-        download=False
-    )
-)
-
-print(
-    f"Dataset: {DATASET_NAME}"
-)
-
-print(
-    f"Total utterances: {len(dataset)}"
-)
-
-
-# ==================================================
-# Select fixed samples
-# ==================================================
-
-random.seed(
-    RANDOM_SEED
-)
-
-sample_indices = random.sample(
-    range(
-        len(dataset)
-    ),
-    k=min(
-        NUM_SAMPLES,
-        len(dataset)
-    )
-)
-
-print(
-    f"Selected utterances: {len(sample_indices)}"
-)
-
-
-# ==================================================
-# Result containers
-# ==================================================
-
-results = []
-
-frequency_results = {}
+    return retained_bandwidth_hz, float(hf_power_change_db)
 
 
 # ==================================================
 # Run distortion analysis
 # ==================================================
 
-for condition in CONDITIONS:
+results = []
+frequency_results = {}
 
-    codec = condition[
-        "codec"
-    ]
+for dataset_name in DATASET_NAMES:
 
-    bitrate = condition[
-        "bitrate"
-    ]
+    print(f"\nLoading LibriSpeech {dataset_name}...")
 
-    print(
-        "\n"
-        + "=" * 70
+    dataset = torchaudio.datasets.LIBRISPEECH(
+        root=DATA_ROOT,
+        url=dataset_name,
+        download=False,
     )
 
-    print(
-        f"Running {codec.upper()} {bitrate}"
+    random.seed(RANDOM_SEED)
+    sample_indices = random.sample(
+        range(len(dataset)),
+        k=min(NUM_SAMPLES, len(dataset)),
     )
 
-    print(
-        "=" * 70
-    )
+    print(f"Selected utterances: {len(sample_indices)}")
 
-    for index in tqdm(
-        sample_indices,
-        desc=(
-            f"{codec.upper()} "
-            f"{bitrate}"
-        ),
-        unit="sample"
-    ):
+    for index in tqdm(sample_indices, desc=dataset_name, unit="sample"):
 
         (
             waveform,
@@ -734,465 +321,166 @@ for condition in CONDITIONS:
             speaker_id,
             chapter_id,
             utterance_id,
-        ) = dataset[
-            index
-        ]
+        ) = dataset[index]
 
-        # ------------------------------------------
-        # Encode + decode
-        # ------------------------------------------
+        frequencies = np.linspace(0, sample_rate / 2, N_FFT // 2 + 1)
 
-        (
-            compressed_waveform,
-            compressed_sr
-        ) = compress_audio(
-            waveform,
-            sample_rate,
-            codec,
-            bitrate
-        )
+        for condition in CONDITIONS:
 
-        # ------------------------------------------
-        # Match sample rates if required
-        # ------------------------------------------
+            codec = condition["codec"]
+            bitrate = condition["bitrate"]
 
-        if (
-            compressed_sr
-            !=
-            sample_rate
-        ):
+            compressed_waveform, compressed_sr = compress_audio(
+                waveform, sample_rate, codec, bitrate
+            )
 
-            compressed_waveform = (
-                torchaudio.functional.resample(
-                    compressed_waveform,
-                    compressed_sr,
-                    sample_rate
+            if compressed_sr != sample_rate:
+                compressed_waveform = torchaudio.functional.resample(
+                    compressed_waveform, compressed_sr, sample_rate
                 )
+
+            aligned_ref, aligned_comp, delay_samples = align_waveforms(
+                waveform, compressed_waveform
             )
 
-        # ------------------------------------------
-        # First-pass alignment
-        # ------------------------------------------
+            reference_mag = magnitude_spectrogram(aligned_ref)
+            processed_mag = magnitude_spectrogram(aligned_comp)
 
-        (
-            aligned_ref,
-            aligned_comp,
-            estimated_delay_samples
-        ) = align_waveforms(
-            waveform,
-            compressed_waveform
-        )
-        
-        estimated_delay_ms = (
-            estimated_delay_samples
-            / sample_rate
-            * 1000.0
-        )
-
-        # ------------------------------------------
-        # Dspec + D(f)
-        # ------------------------------------------
-
-        (
-            dspec,
-            frequencies,
-            dfrequency
-        ) = spectral_distortion(
-            aligned_ref,
-            aligned_comp,
-            sample_rate
-        )
-
-        # ------------------------------------------
-        # Effective bandwidth
-        # ------------------------------------------
-
-        reference_bandwidth = (
-            effective_bandwidth(
-                aligned_ref,
-                sample_rate
+            dspec, lsd_db, dfrequency = spectral_distortion(
+                reference_mag, processed_mag
             )
-        )
 
-        compressed_bandwidth = (
-            effective_bandwidth(
-                aligned_comp,
-                sample_rate
+            retained_bandwidth_hz, hf_power_change_db = bandwidth_measures(
+                reference_mag, processed_mag, frequencies
             )
-        )
 
-        bandwidth_change = (
-            compressed_bandwidth
-            -
-            reference_bandwidth
-        )
+            results.append({
+                "dataset": dataset_name,
+                "dataset_index": index,
+                "speaker_id": speaker_id,
+                "chapter_id": chapter_id,
+                "utterance_id": utterance_id,
+                "codec": codec,
+                "bitrate": bitrate,
+                "spectral_distortion": dspec,
+                "lsd_db": lsd_db,
+                "retained_bandwidth_hz": retained_bandwidth_hz,
+                "hf_power_change_db": hf_power_change_db,
+                "estimated_delay_samples": delay_samples,
+                "estimated_delay_ms": delay_samples / sample_rate * 1000.0,
+            })
 
-        # ------------------------------------------
-        # Save per-utterance results
-        # ------------------------------------------
-
-        results.append({
-
-            "dataset":
-                DATASET_NAME,
-
-            "dataset_index":
-                index,
-
-            "speaker_id":
-                speaker_id,
-
-            "chapter_id":
-                chapter_id,
-
-            "utterance_id":
-                utterance_id,
-
-            "codec":
-                codec,
-
-            "bitrate":
-                bitrate,
-
-            "spectral_distortion":
-                dspec,
-
-            "reference_bandwidth_hz":
-                reference_bandwidth,
-
-            "compressed_bandwidth_hz":
-                compressed_bandwidth,
-
-            "bandwidth_change_hz":
-                bandwidth_change,
-
-            "estimated_delay_samples":
-                estimated_delay_samples,
-
-            "estimated_delay_ms":
-                estimated_delay_ms,
-        })
-
-        # ------------------------------------------
-        # Save D(f)
-        # ------------------------------------------
-
-        condition_key = (
-            codec,
-            bitrate
-        )
-
-        if (
-            condition_key
-            not in frequency_results
-        ):
-
-            frequency_results[
-                condition_key
-            ] = {
-
-                "frequencies":
-                    frequencies,
-
-                "distortions":
-                    [],
-            }
-
-        frequency_results[
-            condition_key
-        ][
-            "distortions"
-        ].append(
-            dfrequency
-        )
+            key = (dataset_name, codec, bitrate)
+            if key not in frequency_results:
+                frequency_results[key] = {
+                    "frequencies": frequencies,
+                    "distortions": [],
+                }
+            frequency_results[key]["distortions"].append(dfrequency)
 
 
 # ==================================================
-# Save detailed results
+# Save detailed results and summary
 # ==================================================
 
-df = pd.DataFrame(
-    results
-)
-
-df.to_csv(
-    DETAIL_OUTPUT_PATH,
-    index=False
-)
-
-
-# ==================================================
-# Create summary
-# ==================================================
+df = pd.DataFrame(results)
+df.to_csv(DETAIL_OUTPUT_PATH, index=False)
 
 summary = (
-
-    df.groupby(
-        [
-            "codec",
-            "bitrate"
-        ]
-    )
-
+    df.groupby(["dataset", "codec", "bitrate"], sort=False)
     .agg(
-
-        spectral_distortion_mean=(
-            "spectral_distortion",
-            "mean"
-        ),
-
-        spectral_distortion_median=(
-            "spectral_distortion",
-            "median"
-        ),
-
-        spectral_distortion_std=(
-            "spectral_distortion",
-            "std"
-        ),
-
-        reference_bandwidth_mean_hz=(
-            "reference_bandwidth_hz",
-            "mean"
-        ),
-
-        compressed_bandwidth_mean_hz=(
-            "compressed_bandwidth_hz",
-            "mean"
-        ),
-
-        bandwidth_change_mean_hz=(
-            "bandwidth_change_hz",
-            "mean"
-        ),
+        spectral_distortion_mean=("spectral_distortion", "mean"),
+        spectral_distortion_median=("spectral_distortion", "median"),
+        spectral_distortion_std=("spectral_distortion", "std"),
+        lsd_db_mean=("lsd_db", "mean"),
+        lsd_db_std=("lsd_db", "std"),
+        retained_bandwidth_mean_hz=("retained_bandwidth_hz", "mean"),
+        retained_bandwidth_median_hz=("retained_bandwidth_hz", "median"),
+        hf_power_change_mean_db=("hf_power_change_db", "mean"),
+        estimated_delay_mean_samples=("estimated_delay_samples", "mean"),
     )
-
     .reset_index()
 )
 
-summary.to_csv(
-    SUMMARY_OUTPUT_PATH,
-    index=False
-)
+summary.to_csv(SUMMARY_OUTPUT_PATH, index=False)
 
 
 # ==================================================
 # Save frequency-dependent distortion curves
 # ==================================================
 
-for (
-    codec,
-    bitrate
-), data in frequency_results.items():
+for (dataset_name, codec, bitrate), data in frequency_results.items():
 
-    distortions = np.stack(
-        data[
-            "distortions"
-        ],
-        axis=0
-    )
+    distortions = np.stack(data["distortions"], axis=0)
 
-    mean_distortion = np.mean(
-        distortions,
-        axis=0
-    )
-
-    median_distortion = np.median(
-        distortions,
-        axis=0
-    )
-
-    frequency_df = (
-        pd.DataFrame({
-
-            "frequency_hz":
-                data[
-                    "frequencies"
-                ],
-
-            "mean_distortion_db":
-                mean_distortion,
-
-            "median_distortion_db":
-                median_distortion,
-        })
-    )
-
-    frequency_output_path = (
-        os.path.join(
-            FREQ_OUTPUT_DIR,
-            (
-                f"{codec}_"
-                f"{bitrate}_"
-                "frequency_distortion.csv"
-            )
-        )
-    )
+    frequency_df = pd.DataFrame({
+        "frequency_hz": data["frequencies"],
+        "mean_distortion_db": np.mean(distortions, axis=0),
+        "median_distortion_db": np.median(distortions, axis=0),
+    })
 
     frequency_df.to_csv(
-        frequency_output_path,
-        index=False
+        os.path.join(
+            FREQ_OUTPUT_DIR,
+            f"{dataset_name}_{codec}_{bitrate}_frequency_distortion.csv",
+        ),
+        index=False,
     )
 
 
 # ==================================================
-# Plot selected D(f) curves
+# Plot D(f) for every condition (test-clean)
 # ==================================================
 
-plt.figure(
-    figsize=(
-        10,
-        6
-    )
-)
+fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), sharey=True)
 
-selected_conditions = [
+for ax, codec, cmap in zip(axes, ["mp3", "opus"], ["Blues", "Oranges"]):
 
-    (
-        "mp3",
-        "64k"
-    ),
-
-    (
-        "mp3",
-        "16k"
-    ),
-
-    (
-        "opus",
-        "16k"
-    ),
-
-    (
-        "opus",
-        "12k"
-    ),
-
-    (
-        "opus",
-        "8k"
-    ),
-
-    (
-        "opus",
-        "6k"
-    ),
-]
-
-
-for condition in selected_conditions:
-
-    if (
-        condition
-        not in frequency_results
-    ):
-        continue
-
-    data = frequency_results[
-        condition
-    ]
-
-    distortions = np.stack(
-        data[
-            "distortions"
-        ],
-        axis=0
+    codec_conditions = [c for c in CONDITIONS if c["codec"] == codec]
+    shades = plt.get_cmap(cmap)(
+        np.linspace(0.35, 0.95, len(codec_conditions))
     )
 
-    mean_distortion = np.mean(
-        distortions,
-        axis=0
-    )
-
-    codec, bitrate = (
-        condition
-    )
-
-    plt.plot(
-        data[
-            "frequencies"
-        ],
-        mean_distortion,
-        label=(
-            f"{codec.upper()} "
-            f"{bitrate}"
+    for condition, shade in zip(codec_conditions, shades):
+        data = frequency_results[("test-clean", codec, condition["bitrate"])]
+        ax.plot(
+            data["frequencies"],
+            np.mean(np.stack(data["distortions"]), axis=0),
+            color=shade,
+            linewidth=2,
+            label=condition["bitrate"],
         )
-    )
 
+    ax.set_title(codec.upper())
+    ax.set_xlabel("Frequency (Hz)")
+    ax.grid(True, alpha=0.3)
+    ax.legend(title="Target bitrate")
 
-plt.xlabel(
-    "Frequency (Hz)"
+axes[0].set_ylabel("Mean |log-spectral difference| (dB)")
+fig.suptitle(
+    "Frequency-dependent codec distortion D(f), test-clean "
+    f"({DYNAMIC_RANGE_DB:.0f} dB floor)"
 )
-
-plt.ylabel(
-    "Mean Absolute Log-Spectral Distortion (dB)"
-)
-
-plt.title(
-    "Frequency-Dependent Codec Distortion"
-)
-
-plt.grid(
-    True
-)
-
-plt.legend()
-
-plt.tight_layout()
+fig.tight_layout()
 
 figure_path = os.path.join(
-    FIGURE_OUTPUT_DIR,
-    "frequency_distortion_comparison.png"
+    FIGURE_OUTPUT_DIR, "frequency_distortion_comparison.png"
 )
-
-plt.savefig(
-    figure_path,
-    dpi=300
-)
-
-plt.close()
+fig.savefig(figure_path, dpi=300)
+plt.close(fig)
 
 
 # ==================================================
 # Print summary
 # ==================================================
 
-print(
-    "\n"
-    + "=" * 90
-)
+print("\n" + "=" * 90)
+print("SIGNAL DISTORTION SUMMARY")
+print("=" * 90)
+print(summary.to_string(index=False))
 
-print(
-    "SIGNAL DISTORTION SUMMARY"
-)
-
-print(
-    "=" * 90
-)
-
-print(
-    summary.to_string(
-        index=False
-    )
-)
-
-
-print(
-    "\nSaved:"
-)
-
-print(
-    DETAIL_OUTPUT_PATH
-)
-
-print(
-    SUMMARY_OUTPUT_PATH
-)
-
-print(
-    FREQ_OUTPUT_DIR
-)
-
-print(
-    figure_path
-)
+print("\nSaved:")
+print(DETAIL_OUTPUT_PATH)
+print(SUMMARY_OUTPUT_PATH)
+print(FREQ_OUTPUT_DIR)
+print(figure_path)

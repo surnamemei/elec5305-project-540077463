@@ -1,5 +1,7 @@
 # Why Is Wav2Vec2 Robust to Lossy Audio Compression? A Signal and Representation-Level Study of MP3 and Opus
 
+**Final report:** [FINAL_REPORT.pdf](FINAL_REPORT.pdf) · [FINAL_REPORT.md](FINAL_REPORT.md) · reproducibility map and stale-file list: [FINAL_REPORT_CHECKLIST.md](FINAL_REPORT_CHECKLIST.md). The final report uses speaker-level block-bootstrap CIs (Bisani & Ney, 2004); the utterance-level ΔWER CIs quoted further down this README come from `results/bootstrap_results.csv` and lead to the same conclusions.
+
 ELEC5305 project investigating why Wav2Vec2 remains robust under MP3 and Opus lossy audio compression, and how signal distortion and learned representation changes relate to the onset of ASR errors.
 
 ### Overall Objective
@@ -12,7 +14,7 @@ Rather than treating WER as the only outcome, the project investigates whether m
 https://surnamemei.github.io/elec5305-project-540077463/
 
 **Proposal:**  
-[ELEC5305 Project Proposal v2.pdf](ELEC5305%20Project%20Proposal%20v2.pdf)
+[ELEC5305 Project Proposal v3.pdf](ELEC5305%20Project%20Proposal%20v3.pdf) (previous versions: [v2](ELEC5305%20Project%20Proposal%20v2.pdf), [v1](ELEC5305%20Project%20Proposal%20v1.pdf))
 
 ---
 
@@ -112,15 +114,19 @@ The final analysis is organised across three connected levels:
 
 ### Level 1 – Signal
 
-Codec-induced changes are measured using:
+Codec-induced changes are measured against the aligned WAV signal using:
 
-- log-spectral distortion;
-- frequency-dependent spectral distortion;
-- effective retained bandwidth.
+- log-spectral distance (LSD, dB) and mean squared log-spectral distortion `D_spec` (dB²), with log spectra clipped 80 dB below the reference peak;
+- frequency-dependent spectral distortion `D(f)`;
+- retained bandwidth: the highest frequency at which the codec keeps long-term power within 20 dB of the WAV reference.
 
 ### Level 2 – Learned Representation
 
-Wav2Vec2 hidden representations are compared between the original WAV signal and compressed versions using cosine similarity and representation drift across selected transformer layers.
+Wav2Vec2 hidden representations are compared between the original WAV signal and compressed versions at the convolutional feature-encoder output and at every transformer layer (1–12). Drift is `1 − cosine similarity` of hidden states after per-dimension standardisation (see *Methodological Corrections*).
+
+### Linking the levels
+
+`src/predictor_analysis.py` tests which Level 1 or Level 2 measurement best predicts the Level 3 outcome, at the condition level, pooled over utterances, and within a single codec condition, with bootstrap confidence intervals.
 
 ### Level 3 – Recognition Task
 
@@ -171,12 +177,54 @@ The central objective is to determine how signal-level distortion and learned-re
 
 ---
 
+## Signal, Representation and Recognition Results
+
+All values are means over the same 500 utterances. Signal and drift columns are `test-clean`; ΔWER is shown for both subsets.
+
+| Condition | Measured kbps | LSD (dB) | Retained BW (kHz) | Drift conv | Drift L12 | ΔWER clean | ΔWER other |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| WAV | 256.1 | 0.0 | 8.0 | 0.000 | 0.000 | 0.00 | 0.00 |
+| MP3 128k | 130.2 | 3.5 | 7.3 | 0.010 | 0.004 | −0.02 | +0.24 |
+| MP3 64k | 65.1 | 4.1 | 7.3 | 0.017 | 0.005 | −0.07 | +0.27 |
+| MP3 32k | 32.6 | 6.3 | 7.3 | 0.075 | 0.021 | +0.11 | +0.68 |
+| MP3 24k | 24.5 | 9.2 | 5.8 | 0.144 | 0.041 | +0.02 | +1.42 |
+| MP3 16k | 16.4 | 11.7 | 5.6 | 0.228 | 0.071 | +0.91 | +3.74 |
+| Opus 64k | 71.5 | 1.7 | 8.0 | 0.007 | 0.003 | +0.02 | +0.07 |
+| Opus 32k | 31.6 | 4.0 | 8.0 | 0.041 | 0.009 | −0.04 | +0.10 |
+| Opus 16k | 16.1 | 5.4 | 8.0 | 0.095 | 0.022 | +0.01 | +0.64 |
+| Opus 12k | 12.2 | 5.9 | 8.0 | 0.138 | 0.035 | +0.32 | +1.33 |
+| Opus 8k | 8.1 | 11.4 | 4.6 | 0.335 | 0.086 | +1.15 | +6.63 |
+| Opus 6k | 6.3 | 11.6 | 4.7 | 0.408 | 0.130 | +2.28 | +11.53 |
+
+### Which measurement predicts ASR degradation?
+
+Correlation with ΔWER, 95% speaker-level block-bootstrap CI (`results/predictor_analysis/`):
+
+| Subset | Predictor | Condition level (Pearson) | Utterance level, pooled (Spearman) | Within condition (mean Spearman) |
+|---|---|---:|---:|---:|
+| test-clean | LSD | 0.75 [0.66, 0.81] | 0.15 [0.12, 0.19] | −0.02 [−0.06, 0.02] |
+| test-clean | Bandwidth loss | 0.81 [0.74, 0.85] | 0.17 [0.13, 0.20] | −0.01 [−0.05, 0.04] |
+| test-clean | Drift, conv | 0.93 [0.88, 0.96] | 0.19 [0.15, 0.22] | 0.01 [−0.03, 0.05] |
+| test-clean | Drift, layer 12 | **0.96 [0.91, 0.98]** | **0.21 [0.17, 0.25]** | **0.09 [0.05, 0.13]** |
+| test-other | LSD | 0.79 [0.76, 0.81] | 0.32 [0.27, 0.37] | 0.03 [−0.03, 0.10] |
+| test-other | Bandwidth loss | 0.85 [0.82, 0.87] | 0.33 [0.29, 0.37] | −0.01 [−0.06, 0.04] |
+| test-other | Drift, conv | 0.96 [0.94, 0.97] | 0.36 [0.31, 0.41] | 0.01 [−0.04, 0.06] |
+| test-other | Drift, layer 12 | **0.97 [0.96, 0.98]** | **0.42 [0.37, 0.46]** | **0.23 [0.18, 0.27]** |
+
+For condition-level Pearson, pooled Spearman and within-condition Spearman, the paired bootstrap CI of (layer-12 drift − LSD) excludes zero on both subsets (`predictor_differences_vs_lsd.csv`). Condition-level Spearman (rank order) does not separate the two measures: 0.77 vs 0.78 on test-clean and 0.99 vs 0.97 on test-other.
+
 ## Current Findings
 
-1. **Moderate lossy compression has little practical effect on clean speech.**
-2. **Severe low-bitrate compression causes clear ASR degradation.**
-3. **The harder `test-other` subset is substantially more vulnerable to aggressive compression.**
-4. **Most additional recognition errors under severe compression are substitutions.**
+1. **Moderate lossy compression has little practical effect on clean speech.** Up to Opus 16 kbps and MP3 24 kbps, test-clean ΔWER stays within ±0.11 pp and no bootstrap CI excludes zero.
+2. **Substantial signal distortion is absorbed by the recogniser.** MP3 24 kbps has an LSD of 9.2 dB and removes everything above 5.8 kHz, yet test-clean WER is unchanged (+0.02 pp).
+3. **Wav2Vec2 attenuates codec perturbations with depth.** Standardised drift is highest at the conv output or in layers 1–3 and falls 2.7–4.4× from the conv output to layer 12 on test-clean (e.g. Opus 16 kbps: 0.095 → 0.022). On test-other the attenuation is only 1.5–2.7×, consistent with its larger WER degradation.
+4. **Bandwidth is the clearest physical marker of the transition.** The largest WER jumps coincide with the codec low-pass cutoff moving into the speech band: MP3 at 24/16 kbps (cutoff ~5.8/5.6 kHz) and Opus at 8/6 kbps, where libopus switches to narrowband (~4.6 kHz). Opus 12 kbps keeps the full 8 kHz band and degrades only slightly.
+5. **Bandwidth alone is not sufficient.** Opus 8 and 6 kbps have the same cutoff and almost the same LSD (11.4 vs 11.6 dB), but ΔWER roughly doubles (+1.15 → +2.28 pp clean; +6.63 → +11.53 pp other). Layer-12 drift separates them (0.086 vs 0.130).
+6. **Late-layer drift tracks the size of ΔWER more linearly than any signal measure across conditions** (Pearson r = 0.96–0.97 vs 0.75–0.79 for LSD). Rank order is similar for both (Spearman 0.77–0.99), because LSD saturates rather than misorders. **Within a fixed condition**, signal measures have essentially zero correlation with which utterances degrade, while layer-12 drift shows a modest association (mean ρ = 0.09 test-clean, 0.23 test-other).
+7. **The harder `test-other` subset is substantially more vulnerable to aggressive compression.**
+8. **Most additional recognition errors under severe compression are substitutions.**
+
+**Caveat on late-layer drift.** Layer 12 sits directly below the CTC output layer, so a change in the transcript necessarily implies some change in layer 12. Its predictive power is therefore partly expected. The informative results are (i) how much of the early-layer perturbation disappears before layer 12, and (ii) that signal-level measures, which are available without running the model, fail to predict which utterances break.
 
 Selected bootstrap results:
 
@@ -190,18 +238,28 @@ Selected bootstrap results:
 | test-clean | Opus 6k | +2.28 pp | [+1.86, +2.76] |
 | test-other | Opus 6k | +11.53 pp | [+10.30, +12.83] |
 
-Selected error-type increases:
+Selected error-type increases (JiWER alignment; `results/final_report/table_main_results.csv`):
 
 | Condition | ΔS | ΔD | ΔI |
 |---|---:|---:|---:|
 | test-clean MP3 16k | +85 | +15 | -7 |
 | test-clean Opus 8k | +104 | +14 | -1 |
-| test-other MP3 16k | +280 | +42 | +6 |
-| test-other Opus 8k | +490 | +62 | +30 |
+| test-other MP3 16k | +282 | +41 | +5 |
+| test-other Opus 8k | +492 | +61 | +29 |
 | test-clean Opus 6k | +199 | +27 | +6 |
-| test-other Opus 6k | +868 | +111 | +33 |
+| test-other Opus 6k | +858 | +116 | +38 |
 
 The spectrogram analysis shows substantial attenuation and modification of high-frequency spectral content under very low bitrate compression. These observations are treated as supporting evidence rather than proof of direct causation.
+
+## Methodological Corrections
+
+Three measurement issues were found and corrected after the proposal v2 results. All tables and figures in this README use the corrected versions.
+
+1. **Log-spectral floor.** Spectral distortion was originally computed as `20·log10(|X| + 1e-8)` with no floor. MP3 quantises some bins to exactly zero, which maps them to −160 dB and lets a few bins dominate the average. As a result, MP3 128 kbps appeared about four times more distorted than Opus 16 kbps (317 vs 72 dB²). Log spectra are now clipped 80 dB below the reference peak, giving 23.6 vs 32.3 dB², and LSD in dB is reported as the main signal measure.
+2. **Bandwidth measure.** The original "effective bandwidth" was the 95% cumulative-energy frequency. Speech energy lies mostly below 3 kHz, so this measure (~2.9 kHz for every condition) did not detect codec low-pass filtering. It was replaced by the retained bandwidth defined above.
+3. **Anisotropy of Wav2Vec2 layers.** Raw cosine similarity is not comparable across layers. In layer 11, frames of two *unrelated* utterances already have a cosine similarity of about 0.94, so raw drift in that layer is close to zero whatever the input. Hidden states are therefore standardised per dimension, using mean and standard deviation estimated from the WAV frames of 100 fixed calibration utterances (Timkey & van Schijndel, 2021), before computing cosine similarity. Over 50 pairs of unrelated test-clean utterances (`src/anisotropy_check.py`), the raw cosine similarity is 0.96 in layer 11; after standardisation it is between 0.02 and 0.08 in every layer. Raw drift is still stored (`drift_*` columns) for comparison.
+
+In addition, the signal, representation and EnCodec analyses now use the same 500 utterances per subset as the ASR experiment, instead of a separate 100-utterance sample, so every measurement is paired with the WER of the same utterance.
 
 ---
 
@@ -315,8 +373,21 @@ python src/bootstrap_analysis.py
 python src/error_analysis.py
 python src/signal_distortion_analysis.py
 python src/representation_analysis.py
+python src/predictor_analysis.py
 python src/integrated_analysis.py
 python src/failure_case_analysis.py
+python src/encodec_extension.py   # optional; needs representation_analysis.py output
+```
+
+Final report tables, checks and figures (no model training; see `FINAL_REPORT_CHECKLIST.md`):
+
+```bash
+python src/anisotropy_check.py        # unrelated-utterance cosine per layer
+python src/opus_mode_check.py         # Opus coding mode / bandwidth from the bitstream
+python src/final_report_tables.py     # authoritative tables + validation checks
+python src/final_case_studies.py      # rule-based case selection + drift quartiles
+python src/final_report_figures.py    # report Figures 1-3
+bash report/build_report.sh           # FINAL_REPORT.md + FINAL_REPORT.pdf (needs pandoc + xelatex)
 ```
 
 The main experiment generates the ASR results first. The later analysis scripts read the saved outputs from `results/` and generate additional statistical summaries, signal-level analysis, representation-level analysis, integrated figures, and representative failure cases.
@@ -431,6 +502,20 @@ Generates local spectrogram comparisons around selected substitution-error regio
 python src/comparison_analysis.py
 ```
 
+### 10. Predictor analysis
+
+```bash
+python src/predictor_analysis.py
+```
+
+Tests which signal-level or representation-level measurement best predicts ΔWER and saves:
+
+```text
+results/predictor_analysis/
+results/figures/predictor_condition_scatter.png
+results/figures/predictor_correlation_by_layer.png
+```
+
 ---
 
 ## Repository Structure
@@ -441,13 +526,14 @@ elec5305-project-540077463/
 │   ├── baseline_asr.py
 │   ├── experiment_mp3.py
 │   ├── run_all_experiments.py
-│   ├──analyse_results.py
+│   ├── analyse_results.py
 │   ├── bootstrap_analysis.py
 │   ├── error_analysis.py
 │   ├── spectrogram_analysis.py
 │   ├── local_spectrogram_analysis.py
 │   ├── signal_distortion_analysis.py
 │   ├── representation_analysis.py
+│   ├── predictor_analysis.py
 │   ├── integrated_analysis.py
 │   ├── failure_case_analysis.py
 │   ├── comparison_analysis.py
@@ -462,11 +548,14 @@ elec5305-project-540077463/
 │   ├── bootstrap_results.csv
 │   ├── signal_distortion_summary.csv
 │   ├── representation_similarity_summary.csv
+│   ├── representation_standardisation.pt
 │   ├── integrated_analysis_summary.csv
 │   ├── encodec_extension_results.csv
 │   ├── encodec_extension_summary.csv
 │   ├── error_analysis/
 │   ├── comparison_analysis/
+│   ├── frequency_distortion/
+│   ├── predictor_analysis/
 │   └── figures/
 ├── requirements.txt
 ├── README.md
@@ -510,8 +599,9 @@ The core project scope is now complete. The current implementation includes:
 - WER and ΔWER analysis;
 - paired bootstrap confidence intervals;
 - substitution, deletion and insertion analysis;
-- signal-level spectral distortion and effective-bandwidth analysis;
-- Wav2Vec2 representation drift at early, middle and late layers;
+- signal-level spectral distortion and retained-bandwidth analysis;
+- Wav2Vec2 representation drift at the conv output and all 12 transformer layers;
+- a predictor analysis comparing signal and representation measures as predictors of ΔWER;
 - an integrated signal → representation → recognition analysis;
 - representative individual failure cases.
 
@@ -527,17 +617,14 @@ Instead, the project investigates why Wav2Vec2 remains robust under lossy compre
 2. **Representation level** — how these changes propagate through early, middle and late Wav2Vec2 hidden representations;
 3. **Task level** — when these changes become large enough to produce measurable ASR degradation.
 
-The results suggest that substantial signal distortion can occur before recognition performance degrades strongly. Under more severe compression, representation drift increases, particularly in deeper layers, together with larger WER increases.
+The results show that substantial signal distortion (up to ~9 dB LSD and a 5.8 kHz low-pass cutoff) can occur without measurable WER change, that Wav2Vec2 attenuates codec perturbations by 2.7–4.4× (test-clean) and 1.5–2.7× (test-other) between its conv output and final layer, and that late-layer drift tracks task degradation more closely than signal distortion. This association is not causal, and within a condition it is modest.
 
 This provides a more informative explanation of compression robustness than WER-only codec comparison.
 
 ## Next Steps
 
-- review the matched-bitrate codec comparison and speech-difficulty comparison;
-- collect and organise literature relevant to ASR robustness and lossy compression;
-- incorporate project feedback;
-- determine whether any additional robustness experiment is necessary;
-- prepare the final research report;
+- write the final research report around the predictor analysis and the corrected signal / representation results;
+- update the failure-case discussion using utterances with high layer-12 drift;
 - prepare the project demonstration video.
 
 ### Optional EnCodec Extension
@@ -546,6 +633,41 @@ EnCodec was evaluated as an optional extension after the MP3/Opus analysis was c
 
 Because the 24 kHz mono EnCodec model operates at a different sample rate from LibriSpeech and Wav2Vec2, the experiment included an uncompressed 16 → 24 → 16 kHz resampling control.
 
-The resampling control produced only a negligible WER change, while increasingly aggressive EnCodec compression produced larger representation drift and recognition degradation. WER increased from 4.22% for the WAV baseline to 5.17% at EnCodec 6 kbps and 13.06% at EnCodec 1.5 kbps.
+The extension uses the same 500 `test-clean` utterances as the main experiment, so its WAV baseline (3.17%) is identical to the main WAV result.
+
+| Condition | LSD (dB) | Drift L1 | Drift L12 | WER | ΔWER |
+|---|---:|---:|---:|---:|---:|
+| WAV | 0.0 | 0.000 | 0.000 | 3.17% | 0.00 pp |
+| 16 → 24 → 16 kHz control | 1.4 | 0.004 | 0.002 | 3.19% | +0.02 pp |
+| EnCodec 24 kbps | 7.0 | 0.179 | 0.038 | 3.28% | +0.12 pp |
+| EnCodec 6 kbps | 7.5 | 0.265 | 0.062 | 3.77% | +0.60 pp |
+| EnCodec 1.5 kbps | 8.5 | 0.458 | 0.198 | 9.95% | +6.79 pp |
+
+The resampling control produced only a negligible WER change. EnCodec supports the main conclusion: at 24 kbps its LSD (7.0 dB) is larger than that of Opus 16 kbps (5.4 dB), yet WER is almost unchanged. Its layer-12 drift (0.038) is close to that of MP3 24 kbps (0.041), which also leaves WER unchanged. The relationship between late-layer drift and WER therefore carries over to a neural codec, while the relationship between spectral distortion and WER does not.
 
 This extension is treated as supporting evidence for the main MP3/Opus analysis rather than as a separate codec-ranking experiment.
+
+---
+
+## References
+
+1. A. Baevski, Y. Zhou, A. Mohamed and M. Auli, "wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations," NeurIPS, 2020.
+2. W.-N. Hsu et al., "Robust wav2vec 2.0: Analyzing Domain Shift in Self-Supervised Pre-Training," Interspeech, 2021.
+3. A. Pasad, J.-C. Chou and K. Livescu, "Layer-wise Analysis of a Self-supervised Speech Representation Model," IEEE ASRU, 2021.
+4. V. Panayotov, G. Chen, D. Povey and S. Khudanpur, "LibriSpeech: An ASR Corpus Based on Public Domain Audio Books," ICASSP, 2015.
+5. J.-M. Valin, K. Vos and T. Terriberry, "Definition of the Opus Audio Codec," IETF RFC 6716, 2012.
+6. K. Brandenburg, "MP3 and AAC Explained," AES 17th International Conference on High-Quality Audio Coding, 1999.
+7. L. Besacier, C. Bergamini, D. Vaufreydaz and E. Castelli, "The Effect of Speech and Audio Compression on Speech Recognition Performance," IEEE Workshop on Multimedia Signal Processing, 2001.
+8. H.-G. Hirsch and D. Pearce, "The AURORA Experimental Framework for the Performance Evaluation of Speech Recognition Systems under Noisy Conditions," ISCA ITRW ASR2000, 2000.
+9. A. Radford et al., "Robust Speech Recognition via Large-Scale Weak Supervision," ICML, 2023.
+10. A. Défossez, J. Copet, G. Synnaeve and Y. Adi, "High Fidelity Neural Audio Compression," Transactions on Machine Learning Research, 2023.
+11. N. Zeghidour et al., "SoundStream: An End-to-End Neural Audio Codec," IEEE/ACM Transactions on Audio, Speech, and Language Processing, 2022.
+12. H. Wu et al., "Codec-SUPERB: An In-Depth Analysis of Sound Codec Models," Findings of ACL, 2024.
+13. W. Timkey and M. van Schijndel, "All Bark and No Bite: Rogue Dimensions in Transformer Language Models Obscure Representational Quality," EMNLP, 2021.
+14. K. Ethayarajh, "How Contextual are Contextualized Word Representations? Comparing the Geometry of BERT, ELMo, and GPT-2 Embeddings," EMNLP-IJCNLP, 2019.
+15. S. Kornblith, M. Norouzi, H. Lee and G. Hinton, "Similarity of Neural Network Representations Revisited," ICML, 2019.
+16. R. M. Gray, A. Buzo, A. H. Gray and Y. Matsuyama, "Distortion Measures for Speech Processing," IEEE Transactions on Acoustics, Speech, and Signal Processing, 1980.
+17. M. Bisani and H. Ney, "Bootstrap Estimates for Confidence Intervals in ASR Performance Evaluation," ICASSP, 2004.
+18. B. Efron and R. J. Tibshirani, *An Introduction to the Bootstrap*, Chapman & Hall, 1993.
+
+Software and data resources: [LibriSpeech (OpenSLR 12)](https://www.openslr.org/12/), [facebook/wav2vec2-base-960h](https://huggingface.co/facebook/wav2vec2-base-960h) (the torchaudio `WAV2VEC2_ASR_BASE_960H` bundle is a port of the same fairseq checkpoint), [JiWER](https://github.com/jitsi/jiwer), [FFmpeg codecs](https://ffmpeg.org/ffmpeg-codecs.html), [Opus](https://www.opus-codec.org/), [EnCodec](https://github.com/facebookresearch/encodec), [Codec-Evaluation benchmark](https://github.com/wuzhiyue111/Codec-Evaluation).

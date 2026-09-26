@@ -696,7 +696,7 @@ The analysis measures:
 
 - overall log-spectral distortion;
 - frequency-dependent distortion;
-- effective retained bandwidth;
+- retained bandwidth (highest frequency where codec power stays within 20 dB of the reference);
 - codec delay / alignment.
 
 This stage showed that measurable signal degradation can become substantial before recognition performance changes by the same amount.
@@ -839,6 +839,31 @@ This motivated:
 ```text
 src/comparison_analysis.py
 ```
+
+---
+
+## 23a. Measurement Audit and Predictor Analysis
+
+Before writing the final report, an AI-assisted review of the analysis code checked whether the signal and representation measurements behaved sensibly. Three problems were found:
+
+1. **Spectral-distortion floor.** MP3 128 kbps appeared about four times more distorted than Opus 16 kbps. The cause was `20·log10(|X| + 1e-8)`: bins that MP3 sets to exactly zero were mapped to −160 dB and dominated the average. Log spectra are now clipped 80 dB below the reference peak.
+2. **Bandwidth measure.** The 95%-energy bandwidth was about 2.9 kHz for every condition, because speech energy is concentrated at low frequencies. It could not detect codec low-pass filtering, so it was replaced by the retained bandwidth (highest frequency where codec power stays within 20 dB of the WAV reference). This revealed that the largest WER increases coincide with the codec cutoff moving into the speech band.
+3. **Layer anisotropy.** Raw cosine drift dropped by about 100× at Layer 11. A check showed that frames of two unrelated utterances already have a cosine similarity of about 0.94 in that layer. Hidden states are now standardised per dimension before computing cosine similarity.
+
+At the same time:
+
+- the signal, representation and EnCodec analyses were moved to the same 500 utterances as the ASR experiment;
+- representation analysis was extended to the convolutional feature output, all 12 layers and all 11 codec conditions.
+
+This made a direct test of feedback point 34 possible:
+
+```text
+src/predictor_analysis.py
+```
+
+It compares signal-level and representation-level measurements as predictors of ΔWER at the condition level, pooled over utterances, and within a single codec condition. It uses bootstrap confidence intervals.
+
+The main result was that late-layer drift predicts WER better than any signal measure, and it is the only measure that identifies which utterances fail at a fixed bitrate.
 
 ---
 

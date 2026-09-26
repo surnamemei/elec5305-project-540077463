@@ -1,0 +1,12 @@
+% LaTeX additions for the PDF build of the final report
+\usepackage{etoolbox}
+\usepackage{caption}
+\captionsetup{font=small,labelformat=empty}
+% Compact tables
+\AtBeginEnvironment{longtable}{\footnotesize\setlength{\tabcolsep}{3pt}}
+% Keep figures a sensible size
+\setkeys{Gin}{width=\linewidth,height=0.42\textheight,keepaspectratio}
+\usepackage{float}
+% Non-floating figures: floating figures next to pandoc longtables caused
+% page overflow (lost text) in xelatex, so figures are placed in text order.
+\floatplacement{figure}{H}
