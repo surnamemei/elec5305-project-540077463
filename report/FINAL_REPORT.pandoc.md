@@ -1,7 +1,7 @@
 ---
 title: "Why Is Wav2Vec2 Robust to Lossy Audio Compression? A Signal- and Representation-Level Study of MP3, Opus and EnCodec"
 author: "Jinghang Mei (SID 540077463) — ELEC5305, The University of Sydney"
-date: "Code and results: https://github.com/surnamemei/elec5305-project-540077463"
+subtitle: "Code and results: https://github.com/surnamemei/elec5305-project-540077463"
 ---
 
 ## Abstract

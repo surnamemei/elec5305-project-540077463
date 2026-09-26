@@ -1,0 +1,6 @@
+# GitHub Pages (Jekyll) configuration.
+# The site keeps GitHub Pages' default theme (jekyll-theme-primer).
+# report/ holds pandoc sources for the PDF report and proposal; their YAML
+# front matter is for pandoc, not Jekyll, so they are not built as pages.
+exclude:
+  - report/
