@@ -174,11 +174,13 @@ Verified but not cited (reserve): DASB (arXiv:2406.14294; evaluates discrete tok
 
 Wording revisions in `report/FINAL_REPORT.pandoc.md`. No numbers or figures changed.
 
-- Conclusion: bandwidth statement softened. The largest degradations are concentrated where the cutoff enters the speech band, particularly on test-other; bandwidth loss alone was not sufficient on test-clean; in-band quantisation also matters.
+- Conclusion: the largest degradations are concentrated where the cutoff enters the speech band, particularly on test-other. Bandwidth loss alone was not sufficient on test-clean; differences in in-band coding remain a possible contributor.
 - §5.3: case study described as two utterances with similar global distortion and early-layer drift but different late-layer drift and outcomes.
 - §5.5: secondary answer phrased as "consistent with" attenuation before the upper representations; states that specific acoustic cues were not isolated.
 - §5.4: "resampling control indicates … contributes negligibly"; "suggests" the drift–WER relationship is not codec-specific.
-- Conclusion closing sentence: "attenuation of codec-induced change before it reaches the upper representations".
+- Conclusion closing sentence: reduced measured drift in upper layers is consistent with the results; identifying the mechanisms requires interventional follow-up.
+- Figure 1 caption distinguishes means over utterances from corpus-level ΔWER; the calibration-set overlap is stated explicitly in the methods and limitations.
+- The discussion reports the EnCodec 24 kbps WER change as a small point estimate, without attributing a confidence interval to it.
 - Added "Acknowledgement of AI Assistance" before References. No official ELEC5305 AI-declaration format was found in the project files; the proposal guide contains none.
 
 Proposal v3: `ELEC5305 Project Proposal v3.pdf`, built from `report/proposal_v3.md` with `bash report/build_proposal.sh`. It follows `ELEC5305_Project_Report_Guidelines (2).pdf` (the Project Proposal Guide):

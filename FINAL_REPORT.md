@@ -72,11 +72,9 @@ The Opus coding mode was read from the table-of-contents byte of every packet [\
 
 The recogniser was torchaudio’s `WAV2VEC2_ASR_BASE_960H`: Wav2Vec2 Base fine-tuned with CTC on 960 h of LibriSpeech [\[7\]](#ref-baevski2020wav2vec). It used greedy CTC decoding without a language model and was never retrained. Corpus WER was computed with JiWER 4.0 against the upper-case LibriSpeech transcripts, which match the model’s output alphabet:
 
-``` math
-\mathrm{WER}=\frac{S+D+I}{N},\qquad \Delta\mathrm{WER}=\mathrm{WER}_{\text{codec}}-\mathrm{WER}_{\text{WAV}},
-```
+$$\mathrm{WER}=\frac{S+D+I}{N},\qquad \Delta\mathrm{WER}=\mathrm{WER}_{\text{codec}}-\mathrm{WER}_{\text{WAV}},$$
 
-where $`S`$, $`D`$, $`I`$ are substitutions, deletions and insertions summed over utterances and $`N`$ is the number of reference words. ΔWER is in percentage points (pp).
+where $S$, $D$, $I$ are substitutions, deletions and insertions summed over utterances and $N$ is the number of reference words. ΔWER is in percentage points (pp).
 
 95% confidence intervals come from a paired percentile bootstrap with 2,000 resamples of *speakers*, each resample keeping all of a speaker’s utterances. The same resample was applied to WAV and codec outputs [\[28\]](#ref-bisani2004bootstrap). An utterance-level bootstrap gave narrower intervals but the same conclusion about whether zero was excluded, in all 22 comparisons.
 
@@ -84,18 +82,14 @@ where $`S`$, $`D`$, $`I`$ are substitutions, deletions and insertions summed ove
 
 Decoded signals were aligned to the reference by normalised cross-correlation. The lag was 0 samples for MP3 and at most 2 samples (0.125 ms) for Opus. Short-time Fourier transforms used a 25 ms Hann window, 10 ms hop and 512-point FFT. Log magnitudes were floored at 80 dB below the reference spectrogram peak:
 
-``` math
-L(k,m)=\max\!\big(20\log_{10}|X(k,m)|,\;L^{\text{ref}}_{\max}-80\,\text{dB}\big),\qquad
-\mathrm{LSD}=\frac{1}{M}\sum_{m=1}^{M}\sqrt{\frac{1}{K}\sum_{k=1}^{K}\big(L_{\text{codec}}(k,m)-L_{\text{WAV}}(k,m)\big)^{2}}.
-```
+$$L(k,m)=\max\!\big(20\log_{10}|X(k,m)|,\;L^{\text{ref}}_{\max}-80\,\text{dB}\big),\qquad
+\mathrm{LSD}=\frac{1}{M}\sum_{m=1}^{M}\sqrt{\frac{1}{K}\sum_{k=1}^{K}\big(L_{\text{codec}}(k,m)-L_{\text{WAV}}(k,m)\big)^{2}}.$$
 
-Without the floor, bins that MP3 sets exactly to zero map to $`20\log_{10}\varepsilon`$ and dominate the average. A pilot version without it ranked MP3 128 kbps as more distorted than Opus 16 kbps.
+Without the floor, bins that MP3 sets exactly to zero map to $20\log_{10}\varepsilon$ and dominate the average. A pilot version without it ranked MP3 128 kbps as more distorted than Opus 16 kbps.
 
 The **retained bandwidth** is the highest frequency at which the decoded signal’s long-term power stays within 20 dB of the reference:
 
-``` math
-f_{\text{ret}}=\max\{f_k : 10\log_{10}(\bar P_{\text{codec}}(k)/\bar P_{\text{WAV}}(k))>-20\ \text{dB}\}.
-```
+$$f_{\text{ret}}=\max\{f_k : 10\log_{10}(\bar P_{\text{codec}}(k)/\bar P_{\text{WAV}}(k))>-20\ \text{dB}\}.$$
 
 It replaces a cumulative-energy roll-off used in the pilot, which did not detect low-pass filtering because speech energy is concentrated below about 3 kHz. Frequency-resolved distortion is kept as supporting material in the repository.
 
@@ -103,17 +97,15 @@ It replaces a cumulative-energy roll-off used in the pilot, which did not detect
 
 Hidden states were extracted from the convolutional feature encoder (512 dimensions, 20 ms frames) and all twelve transformer layers (768 dimensions), and truncated to the common frame count.
 
-Raw cosine similarity is not comparable across layers. Over 50 random pairs of *different* test-clean utterances, the mean frame-wise cosine between unrelated speech was 0.04 at the convolutional output, 0.30 at layer 10 and **0.96 at layer 11**, so raw drift in layer 11 is near zero whatever the input. Following Timkey and van Schijndel [\[22\]](#ref-timkey2021bark), each dimension $`d`$ of layer $`\ell`$ was therefore standardised with a mean $`\mu_{\ell,d}`$ and standard deviation $`\sigma_{\ell,d}`$, estimated once from all WAV frames of a fixed calibration set (the first 100 selected test-clean utterances). After standardisation, unrelated utterances had a cosine of 0.02–0.08 in every layer. Drift is
+Raw cosine similarity is not comparable across layers. Over 50 random pairs of *different* test-clean utterances, the mean frame-wise cosine between unrelated speech was 0.04 at the convolutional output, 0.30 at layer 10 and **0.96 at layer 11**, so raw drift in layer 11 is near zero whatever the input. Following Timkey and van Schijndel [\[22\]](#ref-timkey2021bark), each dimension $d$ of layer $\ell$ was therefore standardised with a mean $\mu_{\ell,d}$ and standard deviation $\sigma_{\ell,d}$, estimated once from all WAV frames of a fixed calibration set (the first 100 selected test-clean utterances). These utterances overlap the test-clean evaluation subset; the standardisation uses no transcripts or recognition-error labels. After standardisation, unrelated utterances had a cosine of 0.02–0.08 in every layer. Drift is
 
-``` math
-D_\ell=1-\frac{1}{T}\sum_{t=1}^{T}\cos\!\Big(\tfrac{h^{\text{WAV}}_\ell(t)-\mu_\ell}{\sigma_\ell},\;\tfrac{h^{\text{codec}}_\ell(t)-\mu_\ell}{\sigma_\ell}\Big).
-```
+$$D_\ell=1-\frac{1}{T}\sum_{t=1}^{T}\cos\!\Big(\tfrac{h^{\text{WAV}}_\ell(t)-\mu_\ell}{\sigma_\ell},\;\tfrac{h^{\text{codec}}_\ell(t)-\mu_\ell}{\sigma_\ell}\Big).$$
 
 Raw-cosine drift is retained in the result files for reference only.
 
 ### 3.6 Predictor analysis
 
-Four signal measures (LSD, the mean squared log-spectral difference, bandwidth loss $`8\,\text{kHz}-f_{\text{ret}}`$, and 4–8 kHz power loss) were compared with the drift at each of the 13 representation levels. Three analyses are kept separate:
+Four signal measures (LSD, the mean squared log-spectral difference, bandwidth loss $8\,\text{kHz}-f_{\text{ret}}$, and 4–8 kHz power loss) were compared with the drift at each of the 13 representation levels. Three analyses are kept separate:
 
 1.  **Across conditions:** Pearson and Spearman correlation between the condition-mean measure and corpus ΔWER, over 11 codec conditions plus WAV (12 points).
 2.  **Pooled:** Spearman correlation with utterance-level ΔWER over all 5,500 (utterance, condition) pairs.
@@ -136,19 +128,19 @@ The WAV baselines were 3.17% (test-clean) and 8.26% (test-other). This is consis
 **Table 1.** Signal distortion, layer-12 drift and recognition results. Bitrate is measured, including container overhead. LSD, retained bandwidth (Band) and standardised layer-12 drift (L12) are test-clean means; test-other values differ by at most 1.4 dB, 0.06 kHz and 0.09. ΔWER is in percentage points with 95% speaker-level bootstrap confidence intervals (40 / 33 speakers).
 
 | Condition | Bitrate (kbps) | LSD (dB) | Band (kHz) | L12 drift | Clean WER (%) | Clean ΔWER (pp) \[95% CI\] | Other WER (%) | Other ΔWER (pp) \[95% CI\] |
-|----|---:|---:|---:|---:|---:|---:|---:|---:|
-| WAV | 256.1 | 0 | 8.0 | 0 | 3.17 | — | 8.26 | — |
-| MP3 128k | 130.2 | 3.5 | 7.3 | 0.004 | 3.15 | −0.02 \[−0.16, +0.11\] | 8.50 | +0.24 \[+0.02, +0.47\] |
-| MP3 64k | 65.1 | 4.1 | 7.3 | 0.005 | 3.10 | −0.07 \[−0.21, +0.07\] | 8.54 | +0.27 \[+0.06, +0.50\] |
-| MP3 32k | 32.6 | 6.3 | 7.3 | 0.021 | 3.27 | +0.11 \[−0.13, +0.35\] | 8.95 | +0.68 \[+0.22, +1.15\] |
-| MP3 24k | 24.5 | 9.2 | 5.8 | 0.041 | 3.19 | +0.02 \[−0.26, +0.31\] | 9.69 | +1.42 \[+0.89, +1.99\] |
-| MP3 16k | 16.4 | 11.7 | 5.6 | 0.071 | 4.08 | +0.91 \[+0.61, +1.26\] | 12.00 | +3.74 \[+2.79, +4.71\] |
-| Opus 64k | 71.5 | 1.7 | 8.0 | 0.003 | 3.19 | +0.02 \[−0.06, +0.11\] | 8.33 | +0.07 \[−0.09, +0.24\] |
-| Opus 32k | 31.6 | 4.0 | 8.0 | 0.009 | 3.13 | −0.04 \[−0.20, +0.12\] | 8.36 | +0.10 \[−0.14, +0.32\] |
-| Opus 16k | 16.1 | 5.4 | 8.0 | 0.022 | 3.18 | +0.01 \[−0.21, +0.24\] | 8.90 | +0.64 \[+0.30, +0.97\] |
-| Opus 12k | 12.2 | 5.9 | 8.0 | 0.035 | 3.49 | +0.32 \[+0.05, +0.60\] | 9.60 | +1.33 \[+0.85, +1.82\] |
-| Opus 8k | 8.1 | 11.4 | 4.6 | 0.086 | 4.32 | +1.15 \[+0.82, +1.48\] | 14.89 | +6.63 \[+4.92, +8.60\] |
-| Opus 6k | 6.3 | 11.6 | 4.7 | 0.130 | 5.45 | +2.28 \[+1.82, +2.80\] | 19.79 | +11.53 \[+9.07, +14.18\] |
+|-----------|---------------:|---------:|-----------:|----------:|--------------:|---------------------------:|--------------:|---------------------------:|
+| WAV       |          256.1 |        0 |        8.0 |         0 |          3.17 |                          — |          8.26 |                          — |
+| MP3 128k  |          130.2 |      3.5 |        7.3 |     0.004 |          3.15 |     −0.02 \[−0.16, +0.11\] |          8.50 |     +0.24 \[+0.02, +0.47\] |
+| MP3 64k   |           65.1 |      4.1 |        7.3 |     0.005 |          3.10 |     −0.07 \[−0.21, +0.07\] |          8.54 |     +0.27 \[+0.06, +0.50\] |
+| MP3 32k   |           32.6 |      6.3 |        7.3 |     0.021 |          3.27 |     +0.11 \[−0.13, +0.35\] |          8.95 |     +0.68 \[+0.22, +1.15\] |
+| MP3 24k   |           24.5 |      9.2 |        5.8 |     0.041 |          3.19 |     +0.02 \[−0.26, +0.31\] |          9.69 |     +1.42 \[+0.89, +1.99\] |
+| MP3 16k   |           16.4 |     11.7 |        5.6 |     0.071 |          4.08 |     +0.91 \[+0.61, +1.26\] |         12.00 |     +3.74 \[+2.79, +4.71\] |
+| Opus 64k  |           71.5 |      1.7 |        8.0 |     0.003 |          3.19 |     +0.02 \[−0.06, +0.11\] |          8.33 |     +0.07 \[−0.09, +0.24\] |
+| Opus 32k  |           31.6 |      4.0 |        8.0 |     0.009 |          3.13 |     −0.04 \[−0.20, +0.12\] |          8.36 |     +0.10 \[−0.14, +0.32\] |
+| Opus 16k  |           16.1 |      5.4 |        8.0 |     0.022 |          3.18 |     +0.01 \[−0.21, +0.24\] |          8.90 |     +0.64 \[+0.30, +0.97\] |
+| Opus 12k  |           12.2 |      5.9 |        8.0 |     0.035 |          3.49 |     +0.32 \[+0.05, +0.60\] |          9.60 |     +1.33 \[+0.85, +1.82\] |
+| Opus 8k   |            8.1 |     11.4 |        4.6 |     0.086 |          4.32 |     +1.15 \[+0.82, +1.48\] |         14.89 |     +6.63 \[+4.92, +8.60\] |
+| Opus 6k   |            6.3 |     11.6 |        4.7 |     0.130 |          5.45 |     +2.28 \[+1.82, +2.80\] |         19.79 |   +11.53 \[+9.07, +14.18\] |
 
 **Test-clean.** No condition down to MP3 24 kbps or Opus 16 kbps changed WER measurably: all seven intervals include zero, with point estimates between −0.07 and +0.11 pp. Degradation became measurable at Opus 12 kbps (+0.32 pp) and reached +2.28 pp at Opus 6 kbps.
 
@@ -159,8 +151,8 @@ The WAV baselines were 3.17% (test-clean) and 8.26% (test-other). This is consis
 ### 4.2 Signal distortion without task degradation
 
 <figure>
-<img src="results/final_report/fig1_integrated.png" alt="Figure 1. Signal, representation and recognition against measured bitrate (log scale) for MP3 (blue) and Opus (orange); top row test-clean, bottom row test-other. Columns: log-spectral distance (dB); retained bandwidth (kHz), the highest frequency at which the codec keeps power within 20 dB of WAV; standardised drift at layers 1 and 12 (1 − cosine similarity, dimensionless); ΔWER relative to WAV (percentage points; shaded: 95% speaker-level bootstrap CI). Each point is a mean over 500 utterances." />
-<figcaption aria-hidden="true"><strong>Figure 1.</strong> Signal, representation and recognition against measured bitrate (log scale) for MP3 (blue) and Opus (orange); top row test-clean, bottom row test-other. Columns: log-spectral distance (dB); retained bandwidth (kHz), the highest frequency at which the codec keeps power within 20 dB of WAV; standardised drift at layers 1 and 12 (1 − cosine similarity, dimensionless); ΔWER relative to WAV (percentage points; shaded: 95% speaker-level bootstrap CI). Each point is a mean over 500 utterances.</figcaption>
+<img src="results/final_report/fig1_integrated.png" alt="Figure 1. Signal, representation and recognition against measured bitrate (log scale) for MP3 (blue) and Opus (orange); top row test-clean, bottom row test-other. Columns: log-spectral distance (dB); retained bandwidth (kHz), the highest frequency at which the codec keeps power within 20 dB of WAV; standardised drift at layers 1 and 12 (1 − cosine similarity, dimensionless); ΔWER relative to WAV (percentage points; shaded: 95% speaker-level bootstrap CI). Signal and representation values are means over 500 utterances; ΔWER is computed from corpus-level WER on the same utterances." />
+<figcaption aria-hidden="true"><strong>Figure 1.</strong> Signal, representation and recognition against measured bitrate (log scale) for MP3 (blue) and Opus (orange); top row test-clean, bottom row test-other. Columns: log-spectral distance (dB); retained bandwidth (kHz), the highest frequency at which the codec keeps power within 20 dB of WAV; standardised drift at layers 1 and 12 (1 − cosine similarity, dimensionless); ΔWER relative to WAV (percentage points; shaded: 95% speaker-level bootstrap CI). Signal and representation values are means over 500 utterances; ΔWER is computed from corpus-level WER on the same utterances.</figcaption>
 </figure>
 
 LSD rose steadily as bitrate fell, but test-clean ΔWER stayed flat until much lower bitrates (Figure 1).
@@ -195,10 +187,10 @@ Raw cosine drift instead showed a 5–64-fold drop between layers 10 and 11. Thi
 
 **Across conditions** (Figure 3a–b), layer-12 drift was nearly linear in ΔWER:
 
-| Measure | Pearson r, test-clean | Pearson r, test-other |
-|----|----|----|
-| Layer-12 drift | 0.96 \[0.91, 0.98\] | 0.97 \[0.96, 0.98\] |
-| LSD | 0.75 \[0.66, 0.81\] | 0.79 \[0.76, 0.81\] |
+| Measure                         | Pearson r, test-clean  | Pearson r, test-other  |
+|---------------------------------|------------------------|------------------------|
+| Layer-12 drift                  | 0.96 \[0.91, 0.98\]    | 0.97 \[0.96, 0.98\]    |
+| LSD                             | 0.75 \[0.66, 0.81\]    | 0.79 \[0.76, 0.81\]    |
 | Paired difference (drift − LSD) | +0.21 \[+0.16, +0.25\] | +0.18 \[+0.17, +0.20\] |
 
 Rank correlations did not separate the two measures. Spearman ρ was 0.77 (LSD) vs 0.78 (drift) on test-clean, and 0.99 vs 0.97 on test-other. The difference is therefore one of proportionality: LSD saturates near 11–12 dB while ΔWER keeps rising, whereas drift continues to separate Opus 8 kbps (0.086 / 0.153 on test-clean / test-other) from Opus 6 kbps (0.130 / 0.214).
@@ -243,13 +235,13 @@ At 1.5 kbps, layer-12 drift (0.198) and ΔWER (+6.79 pp) rose sharply, while LSD
 
 ### 5.1 Distortion without task failure
 
-Spectral distortion and recognition degradation are only loosely coupled. MP3 24 kbps and EnCodec 24 kbps change the log spectrum by 7–9 dB, more than Opus 16 kbps, yet neither changes test-clean WER measurably.
+Spectral distortion and recognition degradation are only loosely coupled. MP3 24 kbps and EnCodec 24 kbps change the log spectrum by 7–9 dB, more than Opus 16 kbps, while their test-clean WER changes are small (+0.02 and +0.12 percentage points, respectively). The speaker-level confidence interval for the MP3 change includes zero.
 
 This is consistent with how the codecs work. A perceptual coder hides its quantisation noise below the masking threshold and gives up high-frequency bandwidth first [\[1\]](#ref-brandenburg1999mp3). A neural codec reconstructs a plausible signal rather than the waveform [\[3\]](#ref-defossez2023encodec). Much of the measured LSD therefore probably comes from low-energy bins, fine spectral structure and the upper band, which carry little of the information the recogniser uses.
 
 The pattern matches findings from speech enhancement, where the *type* of processing error matters more than its magnitude [\[26\]](#ref-iwamoto2022artifacts). It is also consistent with the robustness of neural ASR at moderate MP3 and Opus bitrates reported by Narayanan et al. [\[5\]](#ref-narayanan2018domain).
 
-The representation results suggest where the absorption happens. Drift at the convolutional output grows with LSD but is reduced 2.7–4.4-fold by layer 12 on test-clean. This fits the account in which the upper layers of a CTC-fine-tuned model encode task categories rather than acoustic detail [\[8\]](#ref-pasad2021layerwise).
+The representation results show how measured drift varies across layers. Drift at the convolutional output grows with LSD and is 2.7–4.4 times the layer-12 value on test-clean. This fits the account in which the upper layers of a CTC-fine-tuned model encode task categories rather than acoustic detail [\[8\]](#ref-pasad2021layerwise).
 
 LSD is not useless: it ranks conditions almost as well as late-layer drift (Spearman 0.77–0.99). Its *magnitude*, however, is a poor guide to the size of the task effect.
 
@@ -262,15 +254,15 @@ MP3 24 kbps, with a 5.8 kHz cutoff, has no measurable test-clean effect but a cl
 Two cautions apply:
 
 - bandwidth is confounded with coarser in-band quantisation at the same bitrates, so these are associations across a small number of settings (Section 6);
-- bandwidth is not sufficient on its own: Opus 8 and 6 kbps share a cutoff and nearly the same LSD, yet ΔWER nearly doubles, so in-band coding precision also matters, and neither global signal measure captures it.
+- bandwidth is not sufficient on its own: Opus 8 and 6 kbps share a cutoff and nearly the same LSD, yet ΔWER nearly doubles, so differences in in-band coding may also contribute, although neither global signal measure isolates that contribution.
 
 ### 5.3 Representation drift and recognition failure
 
 **Across conditions,** layer-12 drift tracks the *size* of ΔWER nearly linearly, while LSD saturates. This extends the benchmark practice of judging codecs by downstream WER [\[6\]](#ref-wu2024codecsuperb), [\[19\]](#ref-shi2024espnetcodec) with an internal measure that scales with the task effect across three codec families. It parallels Chai et al.’s finding that distances inside an acoustic model track WER better than perceptual metrics [\[9\]](#ref-chai2021cegm), and Zhu et al.’s observation that Wav2Vec2 output similarity follows noise level [\[24\]](#ref-zhu2022noiserobust).
 
-**Within a condition,** every signal measure is near zero, including the bandwidth measure that explained the across-condition transition. Only late-layer drift shows an association, and it is modest: 0.09 and 0.23 on average, up to 0.64 in the severe conditions. Most of the variation in *which* utterances fail is therefore unexplained by any measure studied. The case study illustrates the pattern: two utterances with similar global signal distortion and similar early-layer drift show substantially different late-layer drift and recognition outcomes.
+**Within a condition,** the mean correlation for each signal measure is near zero, including the bandwidth measure associated with the across-condition transition. Only late-layer drift shows an association, and it is modest: 0.09 and 0.23 on average, up to 0.64 in the severe conditions. Most of the variation in *which* utterances fail is therefore unexplained by any measure studied. The case study illustrates the pattern: two utterances with similar global signal distortion and similar early-layer drift show substantially different late-layer drift and recognition outcomes.
 
-These associations are not causal. Layer 12 feeds the CTC output projection [\[10\]](#ref-graves2006ctc). Any change in the transcript requires some change in the final hidden states, so part of the layer-12 correlation is expected by construction. Two results are informative despite this: within-condition association grows steadily with depth from about zero at the convolutional output, and signal measures, which can be computed without the model, have no within-condition association. Together they suggest that whether a codec perturbation matters is decided inside the network, not visible in the signal. Whether this reflects the speech content or the model’s processing cannot be determined from correlations.
+These associations are not causal. Layer 12 feeds the CTC output projection [\[10\]](#ref-graves2006ctc). Any change in the transcript requires some change in the final hidden states, so part of the layer-12 correlation is expected by construction. Within-condition association grows with depth from about zero at the convolutional output, while the signal measures examined have mean correlations near zero. Late-layer drift is therefore more strongly associated with which utterances degrade than these signal measures. Correlations alone cannot establish the mechanism responsible.
 
 The subset difference fits this reading. Test-other shows weaker attenuation (1.5–2.7×), larger late-layer drift for the same codec setting, and five times larger ΔWER at Opus 6 kbps. When speech is already difficult, the recogniser appears to have less margin to absorb further acoustic change, which is consistent with the domain-shift sensitivity of Wav2Vec2 [\[14\]](#ref-hsu2021robust).
 
@@ -285,12 +277,13 @@ The resampling control indicates that the 24 kHz resampling path contributes neg
 
 ### 5.5 Answer to the secondary question
 
-The results are consistent with Wav2Vec2 remaining robust while codec-induced changes are largely attenuated before they reach the upper representations. This holds on clean speech down to about 24 kbps for MP3 and 16 kbps for Opus. Preservation of bandwidth and coarse spectral structure appears to contribute to this robustness, but the present analysis does not isolate the specific acoustic cues responsible. Degradation became pronounced when the codec removed part of the speech band or coded the retained band more coarsely, and in these conditions more of the perturbation remained in the final layers.
+The results are consistent with Wav2Vec2 remaining robust while codec-induced changes are largely attenuated before they reach the upper representations. This holds on clean speech down to about 24 kbps for MP3 and 16 kbps for Opus. Preservation of bandwidth and coarse spectral structure appears to contribute to this robustness, but the present analysis does not isolate the specific acoustic cues responsible. Degradation became pronounced at severe settings, including those where the codec removed part of the speech band. More measured drift remained in the final layers under these conditions, and differences in coding of the retained band may also contribute.
 
 ## 6. Limitations
 
 - **One recogniser.** Only Wav2Vec2 Base with greedy CTC decoding was tested; models such as Whisper [\[16\]](#ref-radford2023whisper) may absorb distortion differently. *Future work:* repeat the analysis for an encoder–decoder model and for a codec-augmented model [\[5\]](#ref-narayanan2018domain).
 - **Late layers are coupled to the output.** The layer-12 correlation with WER is partly structural. *Future work:* intervene, e.g. replace layer-*k* states of the compressed input with WAV states and measure how much WER recovers.
+- **Calibration overlap.** The unlabelled standardisation set overlaps the test-clean evaluation subset. *Future work:* estimate the statistics on an independent calibration set.
 - **Bandwidth is confounded with quantisation.** *Future work:* apply matched low-pass filters to uncompressed audio, and force Opus to wideband at 8 kbps.
 - **Read speech from MP3-coded sources.** LibriSpeech is read audiobook speech, and its source audio was already MP3-coded, so all conditions are tandem coding. *Future work:* conversational or noisy corpora recorded without lossy coding.
 - **Encoder defaults.** LAME CBR and libopus VBR (`application=audio`) as configured by FFmpeg. Other modes would change bandwidth decisions. *Future work:* compare alternative modes at the transition bitrates.
@@ -304,13 +297,13 @@ The results are consistent with Wav2Vec2 remaining robust while codec-induced ch
 MP3 and Opus change the acoustic signal well before they change the recognition performance of a fixed Wav2Vec2 model.
 
 - Down to MP3 24 kbps and Opus 16 kbps, up to 9.2 dB LSD and a 5.8 kHz cutoff produced no measurable WER change on test-clean.
-- The largest degradations were concentrated in conditions where the codec cutoff entered the speech band (MP3 ≤ 24 kbps; Opus narrowband at 8 and 6 kbps), particularly on test-other, where ΔWER reached +11.53 pp. However, bandwidth loss alone was not sufficient to produce measurable degradation on test-clean (MP3 24 kbps: +0.02 pp, CI including zero). In-band quantisation also mattered: Opus 8 and 6 kbps share the same cutoff but differ substantially in ΔWER.
-- Inside the model, codec perturbations were largest in the early layers and were reduced 2.7–4.4-fold by the final layer on clean speech, less on harder speech.
+- The largest degradations were concentrated in conditions where the codec cutoff entered the speech band (MP3 ≤ 24 kbps; Opus narrowband at 8 and 6 kbps), particularly on test-other, where ΔWER reached +11.53 pp. However, bandwidth loss alone was not sufficient to produce measurable degradation on test-clean (MP3 24 kbps: +0.02 pp, CI including zero). Opus 8 and 6 kbps share the same cutoff but differ substantially in ΔWER; differences in in-band coding may also contribute.
+- Measured representation drift was largest in the early layers and fell 2.7–4.4-fold by the final layer on clean speech, with a smaller reduction on harder speech.
 - Across conditions, final-layer drift tracked the size of the WER change far more linearly than spectral distortion, although both ranked conditions similarly.
 - Within a condition, final-layer drift was the only measure with any association with which utterances failed, and that association was modest.
 - EnCodec showed the same pattern.
 
-Wav2Vec2’s robustness to lossy compression is therefore better described as attenuation of codec-induced change before it reaches the upper representations than as insensitivity to signal change. Because the late-layer association is partly structural and entirely correlational, locating where robustness is decided will require interventional follow-up work.
+The results are consistent with reduced measured representation drift in the upper layers despite substantial signal change. Because the late-layer association is partly structural and correlational, identifying the mechanisms underlying robustness will require interventional follow-up work.
 
 ## Acknowledgement of AI Assistance
 
@@ -318,7 +311,7 @@ Generative AI tools were used during project development for brainstorming, writ
 
 ## References
 
-<div id="refs" class="references csl-bib-body" entry-spacing="0">
+<div id="refs" class="references csl-bib-body">
 
 <div id="ref-brandenburg1999mp3" class="csl-entry">
 

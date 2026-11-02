@@ -244,7 +244,7 @@ investigating why Wav2Vec2 can remain robust despite measurable codec-induced di
 </p>
 
 <div class="status-line">
-Core experiments complete — final analysis and reporting stage
+Final report and demonstration materials prepared
 </div>
 
 <div class="badges">
@@ -258,7 +258,15 @@ Core experiments complete — final analysis and reporting stage
 </div>
 
 <div class="hero-actions">
-<a class="button primary" href="ELEC5305%20Project%20Proposal%20v3.pdf">
+<a class="button primary" href="FINAL_REPORT.pdf">
+View Final Report PDF
+</a>
+
+<a class="button secondary" href="FINAL_REPORT.md">
+Read Report (Markdown)
+</a>
+
+<a class="button secondary" href="ELEC5305%20Project%20Proposal%20v3.pdf">
 View Proposal PDF
 </a>
 
@@ -338,6 +346,10 @@ The main experiment uses the fixed pretrained
 <p>
 For each subset, 500 utterances are selected using the fixed random seed
 <code>5305</code>. The same utterances are used across all codec conditions.
+</p>
+
+<p class="small">
+The hidden-state standardisation uses an unlabelled set of 100 selected test-clean utterances, which overlaps the test-clean evaluation subset. No transcripts or recognition-error labels are used for calibration; the report discusses this as a limitation.
 </p>
 
 <div class="table-wrap">
@@ -692,28 +704,28 @@ The strongest main-experiment degradation occurs at Opus 6 kbps.
 <td>test-clean</td>
 <td>MP3 16k</td>
 <td>+0.91 pp</td>
-<td>[+0.59, +1.29]</td>
+<td>[+0.61, +1.26]</td>
 </tr>
 
 <tr>
 <td>test-clean</td>
 <td>Opus 6k</td>
 <td>+2.28 pp</td>
-<td>[+1.86, +2.76]</td>
+<td>[+1.82, +2.80]</td>
 </tr>
 
 <tr>
 <td>test-other</td>
 <td>MP3 16k</td>
 <td>+3.74 pp</td>
-<td>[+3.07, +4.43]</td>
+<td>[+2.79, +4.71]</td>
 </tr>
 
 <tr>
 <td>test-other</td>
 <td>Opus 6k</td>
 <td>+11.53 pp</td>
-<td>[+10.30, +12.83]</td>
+<td>[+9.07, +14.18]</td>
 </tr>
 
 </tbody>
@@ -958,13 +970,12 @@ M. Bisani and H. Ney, “Bootstrap Estimates for Confidence Intervals in ASR Per
 
 <section class="section">
 
-<h2>Next Steps</h2>
+<h2>Project Deliverables</h2>
 
 <ul>
-<li>write the final report around the predictor analysis and corrected signal / representation results</li>
-<li>update the failure-case discussion using utterances with high Layer 12 drift</li>
-<li>prepare the final research report</li>
-<li>prepare the project demonstration video</li>
+<li><a href="FINAL_REPORT.pdf">Final report (PDF)</a> and <a href="FINAL_REPORT.md">GitHub-readable report</a></li>
+<li><a href="report/FINAL_REPORT.pandoc.md">Editable report source</a> and <a href="FINAL_REPORT_CHECKLIST.md">reproducibility checklist</a></li>
+<li><a href="src/video_demo.py">Two-utterance live code demonstration</a> and <a href="CODE_GUIDE.md">code guide</a></li>
 </ul>
 
 </section>
@@ -986,7 +997,7 @@ github.com/surnamemei/elec5305-project-540077463
 </section>
 
 <div class="footer-note">
-ELEC5305 project — core experiments complete; final interpretation and reporting are in progress.
+ELEC5305 project — final report, analysis outputs, and demonstration code are prepared.
 </div>
 
 </div>

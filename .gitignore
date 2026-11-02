@@ -7,3 +7,6 @@ compressed/
 
 # Windows download metadata (WSL)
 *:Zone.Identifier
+
+# Generated live-demo audio, predictions, and plots
+demo_assets/
