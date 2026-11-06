@@ -78,7 +78,7 @@ bash report/build_report.sh
 
 ## Related work
 
-A separate unpublished manuscript by the author, [*Bandwidth Removal Reproduces Only Part of the ASR Penalty of 8-kbit/s Opus*](https://github.com/surnamemei/opus-asr-bandwidth-decomposition/blob/main/manuscript/taslp_submission.md), studies Opus at 8 kbit/s using a matched low-pass control and two ASR models. It uses different utterances from this course project but includes the same 73 LibriSpeech test speakers; the two analyses are therefore not independent at the speaker level. The manuscript was submitted to IEEE/ACM Transactions on Audio, Speech, and Language Processing (TASLP) and is under review as of 2026-11-06 (status confirmed by the author). Its results are not part of this course project's analysis.
+A separate unpublished manuscript by the author, [*Bandwidth Removal Reproduces Only Part of the ASR Penalty of 8-kbit/s Opus*](https://github.com/surnamemei/opus-asr-bandwidth-decomposition/blob/main/manuscript/taslp_submission.md), studies Opus at 8 kbit/s using a matched low-pass control and two ASR models. It uses different utterances from this course project but includes the same 73 LibriSpeech test speakers; the two analyses are therefore not independent at the speaker level. The manuscript was submitted to IEEE Transactions on Audio, Speech, and Language Processing (TASLP) and is under review as of 2026-11-06. Its results are not part of this course project's analysis.
 
 ## Repository map
 
