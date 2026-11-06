@@ -6,7 +6,7 @@ subtitle: "Code and results: https://github.com/surnamemei/elec5305-project-5400
 
 ## Abstract
 
-Speech is increasingly stored and transmitted with lossy codecs before it reaches an automatic speech recognition (ASR) system, yet codec robustness is usually reported only as a word error rate (WER). This study asks *why* a fixed Wav2Vec2 recogniser tolerates compression and what changes when it stops doing so. On 500 paired utterances from each of LibriSpeech test-clean and test-other, eleven MP3 and Opus settings (6–128 kbps) were analysed at three levels: signal distortion (log-spectral distance, LSD, and retained bandwidth), standardised hidden-representation drift at every Wav2Vec2 layer, and WER with speaker-level bootstrap confidence intervals. MP3 at 24 kbps changed the spectrum by 9.2 dB LSD and removed content above 5.8 kHz without a measurable test-clean WER change (+0.02 pp, 95% CI [−0.26, +0.31]). The largest degradations coincided with the codec cutoff entering the speech band, reaching +11.53 pp on test-other at Opus 6 kbps. Across conditions, layer-12 drift tracked ΔWER more linearly than LSD (Pearson r = 0.96–0.97 versus 0.75–0.79), although both ranked conditions similarly. Within a fixed condition, only late-layer drift showed a modest association with which utterances failed (mean Spearman ρ = 0.09 and 0.23). A neural-codec extension (EnCodec) followed the same pattern. Because late layers feed the CTC output directly, these associations are not causal evidence.
+Speech is increasingly stored and transmitted with lossy codecs before it reaches an automatic speech recognition (ASR) system, yet codec robustness is usually reported only as a word error rate (WER). This study asks *why* a fixed Wav2Vec2 recogniser tolerates compression and what changes when it stops doing so. On 500 paired utterances from each of LibriSpeech test-clean and test-other, eleven MP3 and Opus settings (6–128 kbps) were analysed at three levels: signal distortion (log-spectral distance, LSD, and retained bandwidth), standardised hidden-representation drift at every Wav2Vec2 layer, and WER with speaker-level bootstrap confidence intervals. MP3 at 24 kbps changed the spectrum by 9.2 dB LSD and an estimated retained bandwidth of about 5.8 kHz without a measurable test-clean WER change (+0.02 pp, 95% CI [−0.26, +0.31]). The largest degradations coincided with the codec cutoff entering the speech band, reaching +11.53 pp on test-other at Opus 6 kbps. Across conditions, layer-12 drift tracked ΔWER more linearly than LSD (Pearson r = 0.96–0.97 versus 0.75–0.79), although both ranked conditions similarly. Within a fixed condition, only late-layer drift showed a modest association with which utterances failed (mean Spearman ρ = 0.09 and 0.23). A neural-codec extension (EnCodec) followed the same pattern. Because late layers feed the CTC output directly, these associations are not causal evidence.
 
 ## 1. Introduction
 
@@ -153,7 +153,7 @@ The WAV baselines were 3.17% (test-clean) and 8.26% (test-other). This is consis
 
 LSD rose steadily as bitrate fell, but test-clean ΔWER stayed flat until much lower bitrates (Figure 1).
 
-MP3 24 kbps is the clearest case. Its LSD (9.2 dB) exceeded that of every Opus setting down to 12 kbps, and it removed content above 5.8 kHz, yet test-clean ΔWER was +0.02 pp [−0.26, +0.31].
+MP3 24 kbps is the clearest case. Its LSD (9.2 dB) exceeded that of every Opus setting down to 12 kbps, and its estimated retained bandwidth was about 5.8 kHz, yet test-clean ΔWER was +0.02 pp [−0.26, +0.31].
 
 Retained bandwidth changed in steps. MP3 kept about 7.3 kHz from 128 to 32 kbps, then 5.8 kHz at 24 kbps and 5.6 kHz at 16 kbps. Opus kept the full 8 kHz down to 12 kbps, then 4.6–4.7 kHz at 8 and 6 kbps, where the bitstream switches to SILK narrowband.
 
@@ -236,7 +236,7 @@ LSD is not useless: it ranks conditions almost as well as late-layer drift (Spea
 
 On test-other, the four largest degradations occur where the codec cutoff falls below about 6 kHz; on test-clean, three of the four do. For Opus the mechanism is visible in the bitstream. Between 12 and 8 kbps, libopus switches every packet from SILK wideband to SILK narrowband, which is the operating range RFC 6716 gives for 8–12 kbit/s speech [@rfc6716]. The 4–8 kHz band is then no longer transmitted at all. Opus 12 kbps shows that bitrate reduction as such is not the problem: with the full band retained, degradation is small.
 
-MP3 24 kbps, with a 5.8 kHz cutoff, has no measurable test-clean effect but a clear test-other effect (+1.42 pp). This suggests that band-limitation interacts with speech that is already difficult. Narayanan et al.'s loss at MP3 23 kbps [@narayanan2018domain] was measured on different data and a different model, but falls at the same point.
+MP3 24 kbps, with an estimated retained bandwidth of about 5.8 kHz, has no measurable test-clean effect but a clear test-other effect (+1.42 pp). This suggests that band-limitation interacts with speech that is already difficult. Narayanan et al.'s loss at MP3 23 kbps [@narayanan2018domain] was measured on different data and a different model, but falls at the same point.
 
 Two cautions apply:
 
@@ -266,6 +266,10 @@ The resampling control indicates that the 24 kHz resampling path contributes neg
 
 The results are consistent with Wav2Vec2 remaining robust while codec-induced changes are largely attenuated before they reach the upper representations. This holds on clean speech down to about 24 kbps for MP3 and 16 kbps for Opus. Preservation of bandwidth and coarse spectral structure appears to contribute to this robustness, but the present analysis does not isolate the specific acoustic cues responsible. Degradation became pronounced at severe settings, including those where the codec removed part of the speech band. More measured drift remained in the final layers under these conditions, and differences in coding of the retained band may also contribute.
 
+### 5.6 Relation to a separate manuscript
+
+A separate manuscript by the author, [*Bandwidth Removal Reproduces Only Part of the ASR Penalty of 8-kbit/s Opus*](https://github.com/surnamemei/opus-asr-bandwidth-decomposition/blob/main/manuscript/taslp_submission.md), studies whether a matched low-pass control reproduces the recognition penalty of Opus at 8 kbit/s. It evaluates Whisper large-v3 and Wav2Vec2-base-960h on 2,174 LibriSpeech test utterances, while this course project uses one fixed Wav2Vec2 recogniser and a broad MP3/Opus bitrate sweep on 500 utterances from each test subset. The two analyses share no utterance IDs but include the same 73 speakers, so they are complementary at the utterance level but not independent at the speaker level. The manuscript was submitted to IEEE/ACM Transactions on Audio, Speech, and Language Processing (TASLP) and is under review as of 2026-11-06 (status confirmed by the author). The journal manuscript's results are not included in this report's analyses or conclusions.
+
 ## 6. Limitations
 
 - **One recogniser.** Only Wav2Vec2 Base with greedy CTC decoding was tested; models such as Whisper [@radford2023whisper] may absorb distortion differently. *Future work:* repeat the analysis for an encoder–decoder model and for a codec-augmented model [@narayanan2018domain].
@@ -283,7 +287,7 @@ The results are consistent with Wav2Vec2 remaining robust while codec-induced ch
 
 MP3 and Opus change the acoustic signal well before they change the recognition performance of a fixed Wav2Vec2 model.
 
-- Down to MP3 24 kbps and Opus 16 kbps, up to 9.2 dB LSD and a 5.8 kHz cutoff produced no measurable WER change on test-clean.
+- Down to MP3 24 kbps and Opus 16 kbps, up to 9.2 dB LSD and an estimated retained bandwidth of about 5.8 kHz produced no measurable WER change on test-clean.
 - The largest degradations were concentrated in conditions where the codec cutoff entered the speech band (MP3 ≤ 24 kbps; Opus narrowband at 8 and 6 kbps), particularly on test-other, where ΔWER reached +11.53 pp. However, bandwidth loss alone was not sufficient to produce measurable degradation on test-clean (MP3 24 kbps: +0.02 pp, CI including zero). Opus 8 and 6 kbps share the same cutoff but differ substantially in ΔWER; differences in in-band coding may also contribute.
 - Measured representation drift was largest in the early layers and fell 2.7–4.4-fold by the final layer on clean speech, with a smaller reduction on harder speech.
 - Across conditions, final-layer drift tracked the size of the WER change far more linearly than spectral distortion, although both ranked conditions similarly.

@@ -5,7 +5,7 @@
 #   FINAL_REPORT.md   GitHub-readable Markdown with numbered IEEE citations
 #   FINAL_REPORT.pdf  PDF (requires xelatex)
 #
-# Requirements: pandoc >= 3 (set PANDOC=/path/to/pandoc if not on PATH),
+# Requirements: pandoc >= 3, pdfinfo/pdftotext (Poppler), mutool (MuPDF),
 #               xelatex with the Linux Libertine O and DejaVu Math TeX Gyre fonts.
 #
 # Run from the repository root:
@@ -46,5 +46,14 @@ COMMON=(
   --variable=mathfont:"DejaVu Math TeX Gyre" \
   --variable=colorlinks:true \
   --output=FINAL_REPORT.pdf
+
+# Pandoc/LaTeX can leave a trailing page containing only its folio after the bibliography.
+# Remove it only when the last page contains no text beyond the printed page number.
+pages="$(pdfinfo FINAL_REPORT.pdf | sed -n "s/^Pages:[[:space:]]*//p")"
+last_text="$(pdftotext -f "$pages" -l "$pages" FINAL_REPORT.pdf - | tr -d "[:space:]")"
+if [[ "$last_text" == "$pages" ]]; then
+  mutool merge -o FINAL_REPORT.trimmed.pdf -O garbage=compact FINAL_REPORT.pdf "1-$((pages - 1))"
+  mv FINAL_REPORT.trimmed.pdf FINAL_REPORT.pdf
+fi
 
 echo "Built FINAL_REPORT.md and FINAL_REPORT.pdf"

@@ -513,12 +513,12 @@ in the repository results.
 <h2>Three-Level Analysis</h2>
 
 <div class="figure">
-<img src="results/figures/integrated_analysis.png"
+<img src="results/final_report/fig1_integrated.png"
 alt="Integrated signal representation and recognition analysis">
 
 <p class="small">
 Log-spectral distance, retained bandwidth, standardised Layer 1 / Layer 12 drift and ΔWER
-(shaded: 95% bootstrap CI) against measured bitrate, for all MP3 and Opus conditions and
+(shaded: 95% speaker-level bootstrap CI) against measured bitrate, for all MP3 and Opus conditions and
 both LibriSpeech subsets (500 paired utterances each).
 </p>
 </div>
@@ -527,8 +527,8 @@ both LibriSpeech subsets (500 paired utterances each).
 
 <div class="finding">
 <strong>Large signal distortion can leave WER unchanged</strong>
-MP3 24 kbps has a log-spectral distance of 9.2 dB and removes everything above 5.8 kHz,
-yet test-clean WER changes by only +0.02 pp.
+MP3 24 kbps has a log-spectral distance of 9.2 dB and an estimated retained bandwidth of about 5.8 kHz
+(using a −20 dB relative-power threshold), yet test-clean WER changes by only +0.02 pp.
 </div>
 
 <div class="finding">
@@ -660,9 +660,9 @@ clipped 80 dB below the reference peak).
 </div>
 
 <p>
-MP3 applies a hard low-pass filter (about 7.3 kHz at 32–128 kbps, 5.8 kHz at 24 kbps and 5.6 kHz
-at 16 kbps), while Opus keeps the full 8 kHz band down to 12 kbps and switches to narrowband
-coding (about 4.6 kHz) at 8 and 6 kbps. The magnitude of signal distortion alone does not
+The measured retained bandwidth is about 7.3 kHz for MP3 at 32–128 kbps, 5.8 kHz at 24 kbps and 5.6 kHz
+at 16 kbps. Opus retains the full 8 kHz band down to 12 kbps and switches to narrowband coding
+(about 4.6 kHz) at 8 and 6 kbps. These bandwidth estimates use a −20 dB relative-power threshold. The magnitude of signal distortion alone does not
 predict ASR failure: Opus 8 and 6 kbps are almost identical at the signal level but differ
 substantially in WER.
 </p>
@@ -837,8 +837,8 @@ relationship does not.
 
 <div class="callout">
 
-Codec-induced signal distortion can be large, up to about 9 dB log-spectral distance with a
-5.8 kHz low-pass cutoff, before recognition performance changes measurably.
+Codec-induced signal distortion can be large, up to about 9 dB log-spectral distance with an estimated retained bandwidth of about
+5.8 kHz, before recognition performance changes measurably.
 
 <br><br>
 
@@ -864,20 +864,8 @@ and downstream recognition performance.
 <p>
 Individual failure analysis confirms that severe compression can transform
 previously correct WAV recognition into large substitution- and deletion-heavy errors.
-Representative cases are stored in:
-</p>
-
-<p>
-<code>results/error_analysis/selected_failure_cases.csv</code>
-</p>
-
-<p>
-and
-</p>
-
-<p>
-<code>results/error_analysis/selected_failure_cases.txt</code>
-</p>
+The final report's selected cases and selection rule are documented in
+<a href="results/final_report/case_study_selection.csv">the final case-study table</a>.
 
 </section>
 

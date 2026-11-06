@@ -10,7 +10,7 @@ This project studies how MP3 and Opus compression affect speech signals, Wav2Vec
 
 ## Main result
 
-Measurable spectral distortion can appear before a clear change in recognition accuracy. On `test-clean`, MP3 at 24 kbps produced 9.2 dB log-spectral distance and retained bandwidth of about 5.8 kHz, while the WER change was only +0.02 percentage points (speaker-level 95% CI includes zero). At the most aggressive Opus setting, 6 kbps, ΔWER was +2.28 points on `test-clean` and +11.53 points on `test-other`.
+Measurable spectral distortion can appear before a clear change in recognition accuracy. On `test-clean`, MP3 at 24 kbps produced 9.2 dB log-spectral distance and an estimated retained bandwidth of about 5.8 kHz (using the report's −20 dB relative-power threshold), while the WER change was only +0.02 percentage points (speaker-level 95% CI includes zero). At the most aggressive Opus setting, 6 kbps, ΔWER was +2.28 points on `test-clean` and +11.53 points on `test-other`.
 
 Across the 12 WAV/MP3/Opus conditions, layer-12 representation drift was more linearly associated with ΔWER than log-spectral distance (Pearson *r* = 0.96–0.97 vs 0.75–0.79). Within a fixed condition, the layer-12 association with which utterances failed was modest (mean Spearman ρ = 0.09 on `test-clean`, 0.23 on `test-other`). These are associations, not evidence of a causal mechanism.
 
@@ -33,7 +33,7 @@ Per-dimension hidden-state standardisation uses an unlabelled set of 100 selecte
 
 The short demonstration re-runs two selected `test-clean` utterances through WAV and Opus 8 kbps, prints the reference and live ASR outputs, and saves spectrograms and audio files. It uses the case list and signal/representation measurements saved with the report; LSD and layer-12 drift are **not** recalculated by the demo.
 
-Prerequisites: Python dependencies from `requirements.txt`, FFmpeg with `libopus`, and the LibriSpeech `test-clean` files used by the project available under `data/LibriSpeech/test-clean/`. The TorchAudio model bundle may download on its first use.
+Prerequisites: Python dependencies from `requirements.txt`, FFmpeg with `libopus`, and the LibriSpeech `test-clean` files under `data/LibriSpeech/test-clean/`. The TorchAudio model bundle may download on first use.
 
 ```bash
 python src/video_demo.py --data-root data --output demo_assets --device cpu
@@ -51,7 +51,13 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-`src/run_all_experiments.py` runs one subset, selected by `DATASET_NAME` near the top of the file (currently `test-other`). Run it once for each subset, setting that value to `test-clean` for the second run. The full ASR experiment downloads/loads LibriSpeech and the pretrained model and can take substantially longer than the two-utterance demo.
+`src/run_all_experiments.py` runs one subset, selected by `DATASET_NAME` near the top of the file (currently `test-other`). Run it once for each subset, setting that value to `test-clean` for the second run. The experiment scripts use `download=False` and expect the extracted LibriSpeech subsets under `data/LibriSpeech/`. Download them once with TorchAudio:
+
+```bash
+python -c "from torchaudio.datasets import LIBRISPEECH; [LIBRISPEECH('data', url=s, download=True) for s in ('test-clean', 'test-other')]"
+```
+
+The full ASR experiment and pretrained-model download can take substantially longer than the two-utterance demo. The downloaded data and caches are not tracked by Git.
 
 After the experiment outputs are available, the analysis and report can be regenerated from the repository root:
 
@@ -69,6 +75,10 @@ bash report/build_report.sh
 ```
 
 `report/build_report.sh` also requires Pandoc 3 or later and XeLaTeX. See [CODE_GUIDE.md](CODE_GUIDE.md) for the script-by-script workflow and [FINAL_REPORT_CHECKLIST.md](FINAL_REPORT_CHECKLIST.md) for the included result files and provenance notes.
+
+## Related work
+
+A separate unpublished manuscript by the author, [*Bandwidth Removal Reproduces Only Part of the ASR Penalty of 8-kbit/s Opus*](https://github.com/surnamemei/opus-asr-bandwidth-decomposition/blob/main/manuscript/taslp_submission.md), studies Opus at 8 kbit/s using a matched low-pass control and two ASR models. It uses different utterances from this course project but includes the same 73 LibriSpeech test speakers; the two analyses are therefore not independent at the speaker level. The manuscript was submitted to IEEE/ACM Transactions on Audio, Speech, and Language Processing (TASLP) and is under review as of 2026-11-06 (status confirmed by the author). Its results are not part of this course project's analysis.
 
 ## Repository map
 
