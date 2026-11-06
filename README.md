@@ -4,6 +4,8 @@
 
 This project studies how MP3 and Opus compression affect speech signals, Wav2Vec2 representations, and speech recognition errors. The same pretrained recogniser evaluates paired WAV and compressed versions of 500 utterances from each LibriSpeech test subset.
 
+**Project website:** [Explore the project](https://surnamemei.github.io/elec5305-project-540077463/)
+
 **Project report:** [PDF](FINAL_REPORT.pdf) · [Markdown](FINAL_REPORT.md) · [Report source](report/FINAL_REPORT.pandoc.md) · [Code guide](CODE_GUIDE.md) · [Reproducibility checklist](FINAL_REPORT_CHECKLIST.md)
 
 ## Main result
