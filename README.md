@@ -29,6 +29,10 @@ Across the 12 WAV/MP3/Opus conditions, layer-12 representation drift was more li
 
 Per-dimension hidden-state standardisation uses an unlabelled set of 100 selected `test-clean` utterances. This set overlaps the `test-clean` evaluation subset; no transcripts or recognition-error labels are used for calibration. The report lists this overlap as a limitation.
 
+## Project video
+
+[Watch or download the demonstration](presentation/ELEC5305_Final_Demo.mp4) · [English subtitles](presentation/ELEC5305_Final_Demo.srt)
+
 ## Run the demonstration
 
 The short demonstration re-runs two selected `test-clean` utterances through WAV and Opus 8 kbps, prints the reference and live ASR outputs, and saves spectrograms and audio files. It uses the case list and signal/representation measurements saved with the report; LSD and layer-12 drift are **not** recalculated by the demo.
